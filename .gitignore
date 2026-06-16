@@ -1,0 +1,11 @@
+node_modules/
+__pycache__/
+*.pyc
+.next/
+.env
+backend/.env
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+backend/app/data/
