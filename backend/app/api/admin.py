@@ -57,7 +57,7 @@ async def get_dh_config():
 
 @router.post("/digital-human/config")
 async def update_dh_config(config: DigitalHumanConfig):
-    return {"status": "ok", "config": config.dict()}
+    return {"status": "ok", "config": config.model_dump()}
 
 # 数据统计
 @router.get("/stats/overview")

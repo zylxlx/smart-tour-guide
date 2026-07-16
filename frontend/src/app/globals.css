@@ -1,12 +1,43 @@
 @import "tailwindcss";
 
+@theme inline {
+  --color-zen-gold: #b8860b;
+  --color-zen-amber: #d4a017;
+  --color-zen-cream: #fdf5e6;
+  --color-zen-brown: #5c3d2e;
+  --color-zen-bg: #fef9f0;
+}
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #fef9f0;
+  --foreground: #3d2b1f;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: "Microsoft YaHei", "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", system-ui, sans-serif;
 }
+
+/* 自定义滚动条 */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #fdf5e6;
+}
+::-webkit-scrollbar-thumb {
+  background: #d4a017;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #b8860b;
+}
+
+/* Markdown渲染样式 */
+h1, h2, h3 { font-weight: 700; margin-top: 0.5rem; margin-bottom: 0.25rem; }
+h1 { font-size: 1.25rem; }
+h2 { font-size: 1.125rem; }
+h3 { font-size: 1rem; }
+li { margin-left: 1rem; }
+strong { color: #b8860b; }
