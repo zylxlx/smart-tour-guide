@@ -1,10 +1,12 @@
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect, UploadFile, File
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from app.services.llm_service import llm_service
 from app.services.tts_service import tts_service
 from app.services.rag_service import rag_service
 import json
+import os
+import tempfile
 
 router = APIRouter()
 
@@ -36,6 +38,18 @@ async def recommend(req: RecommendRequest):
     """个性化路线推荐"""
     spots = rag_service.recommend_spots(req.preference)
     return {"preference": req.preference, "route": spots}
+
+@router.post("/voice")
+async def voice_to_text(file: UploadFile = File(...)):
+    """语音文件上传 → 转文字（需配置ASR）"""
+    # 要在比赛时使用语音识别，选择其一：
+    # 方案1: pip install faster-whisper（轻量，推荐）
+    # 方案2: 百度语音识别API（每天5万次免费）
+    # 方案3: 用正式AppID启用微信同声传译插件
+    return {
+        "text": "语音已收到。文字输入正常可用，语音识别待配置ASR服务。",
+        "status": "asr_not_configured",
+    }
 
 @router.websocket("/ws")
 async def websocket_chat(ws: WebSocket):

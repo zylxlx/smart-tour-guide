@@ -1,8 +1,11 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
+import dynamic from "next/dynamic";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
+const Live2DViewer = dynamic(() => import("@/components/Live2DViewer"), { ssr: false });
 
 type Message = { role: "user" | "assistant"; text: string };
 
@@ -145,13 +148,9 @@ export default function Home() {
       {/* 左侧：数字人展示区 + 偏好选择 */}
       <div className="w-1/2 flex flex-col items-center justify-center p-8 border-r border-amber-200">
         <div className="w-80 h-96 rounded-2xl bg-amber-100/50 border-2 border-amber-300 flex flex-col items-center justify-center mb-4 shadow-lg relative overflow-hidden">
-          <div className="text-center text-amber-800">
-            <div className="text-6xl mb-4">🙏</div>
-            <p className="text-lg font-bold">慧行 · AI数字人导游</p>
-            <p className="text-sm text-amber-600 mt-2">Live2D组件将在此渲染</p>
-          </div>
+          <Live2DViewer />
           {loading && (
-            <div className="absolute bottom-4 left-1/2 -translate-x-1/2">
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10">
               <span className="inline-flex gap-1">
                 <span className="w-2 h-2 bg-amber-500 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
                 <span className="w-2 h-2 bg-amber-500 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
