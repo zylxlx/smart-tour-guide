@@ -1,6 +1,8 @@
 
+import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from app.api import chat, admin
 
@@ -13,6 +15,11 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# TTS 音频缓存静态目录
+tts_cache_dir = os.path.join(os.path.dirname(__file__), "data", "tts_cache")
+os.makedirs(tts_cache_dir, exist_ok=True)
+app.mount("/static/tts", StaticFiles(directory=tts_cache_dir), name="tts_static")
 
 app.include_router(chat.router, prefix="/api/chat", tags=["chat"])
 app.include_router(admin.router, prefix="/api/admin", tags=["admin"])

@@ -29,9 +29,16 @@ async def chat(req: ChatRequest):
 
 @router.post("/tts")
 async def text_to_speech(req: TTSRequest):
-    """文本转语音，返回音频流"""
-    audio_stream = await tts_service.synthesize(req.text)
-    return StreamingResponse(audio_stream, media_type="audio/wav")
+    """TTS → 保存为文件，返回静态URL给小程序播放"""
+    import hashlib
+    cache_dir = os.path.join(os.path.dirname(__file__), "..", "data", "tts_cache")
+    os.makedirs(cache_dir, exist_ok=True)
+    key = hashlib.md5(req.text.encode()).hexdigest()[:12]
+    filename = f"{key}.wav"
+    filepath = os.path.join(cache_dir, filename)
+    if not os.path.exists(filepath):
+        await tts_service.synthesize_to_file(req.text, filepath)
+    return {"url": f"/static/tts/{filename}", "status": "ok"}
 
 @router.post("/recommend")
 async def recommend(req: RecommendRequest):
@@ -39,17 +46,34 @@ async def recommend(req: RecommendRequest):
     result = rag_service.recommend_spots(req.preference)
     return result
 
+_whisper_model = None
+
+def _get_whisper():
+    global _whisper_model
+    if _whisper_model is None:
+        # 用 imageio-ffmpeg 自带的 ffmpeg
+        import imageio_ffmpeg
+        ffmpeg_dir = os.path.dirname(imageio_ffmpeg.get_ffmpeg_exe())
+        os.environ["PATH"] = ffmpeg_dir + os.pathsep + os.environ.get("PATH", "")
+        import whisper
+        _whisper_model = whisper.load_model("tiny")
+    return _whisper_model
+
 @router.post("/voice")
 async def voice_to_text(file: UploadFile = File(...)):
-    """语音文件上传 → 转文字（需配置ASR）"""
-    # 要在比赛时使用语音识别，选择其一：
-    # 方案1: pip install faster-whisper（轻量，推荐）
-    # 方案2: 百度语音识别API（每天5万次免费）
-    # 方案3: 用正式AppID启用微信同声传译插件
-    return {
-        "text": "语音已收到。文字输入正常可用，语音识别待配置ASR服务。",
-        "status": "asr_not_configured",
-    }
+    """语音文件上传 → whisper 转文字"""
+    model = _get_whisper()
+    suffix = os.path.splitext(file.filename or "audio.mp3")[1] or ".mp3"
+    with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+        content = await file.read()
+        tmp.write(content)
+        tmp_path = tmp.name
+    try:
+        result = model.transcribe(tmp_path, language="zh", fp16=False)
+        text = result["text"].strip()
+        return {"text": text if text else "未识别到语音内容", "status": "ok"}
+    finally:
+        os.unlink(tmp_path)
 
 @router.websocket("/ws")
 async def websocket_chat(ws: WebSocket):

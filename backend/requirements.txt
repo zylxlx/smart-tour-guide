@@ -13,3 +13,5 @@ pydantic==2.12.5
 pydantic-settings==2.14.1
 sqlalchemy==2.0.50
 python-dotenv==1.2.2
+openai-whisper
+imageio-ffmpeg
