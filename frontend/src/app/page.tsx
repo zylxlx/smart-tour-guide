@@ -1,11 +1,9 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import dynamic from "next/dynamic";
+import { useRouter } from "next/navigation";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-
-const Live2DViewer = dynamic(() => import("@/components/Live2DViewer"), { ssr: false });
 
 type Message = { role: "user" | "assistant"; text: string };
 
@@ -22,40 +20,117 @@ function renderMarkdown(text: string): string {
 }
 
 export default function Home() {
+  const router = useRouter();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [listening, setListening] = useState(false);
   const [preference, setPreference] = useState("");
+  const [speaking, setSpeaking] = useState(false);
+  const [showPwdModal, setShowPwdModal] = useState(false);
+  const [pwdInput, setPwdInput] = useState("");
+  const [pwdError, setPwdError] = useState(false);
   const [sessionId] = useState(() => `session_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`);
   const chatRef = useRef<HTMLDivElement>(null);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const synthRef = useRef<SpeechSynthesis | null>(null);
+  const voiceRef = useRef<SpeechSynthesisVoice | null>(null);
+  const speakingRef = useRef(false);
 
   useEffect(() => {
     chatRef.current?.scrollTo(0, chatRef.current.scrollHeight);
   }, [messages]);
 
-  const playTTS = useCallback(async (text: string) => {
-    try {
-      const res = await fetch(`${API_URL}/api/chat/tts`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text }),
-      });
-      if (!res.ok) return;
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      if (audioRef.current) {
-        audioRef.current.src = url;
-        audioRef.current.play();
-      } else {
-        const audio = new Audio(url);
-        audioRef.current = audio;
-        audio.play();
-      }
-    } catch {
-      // TTS is optional, fail silently
+  // 初始化浏览器语音引擎 — 优先少女音
+  useEffect(() => {
+    if (!("speechSynthesis" in window)) return;
+    const synth = window.speechSynthesis;
+    synthRef.current = synth;
+    const loadVoices = () => {
+      const voices = synth.getVoices();
+      // 少女音优先级：Xiaoxiao > Yaoyao > 其他 zh-CN 女声 > Huihui > 任意中文
+      voiceRef.current =
+        voices.find((v) => v.lang === "zh-CN" && v.name.includes("Xiaoxiao")) ||
+        voices.find((v) => v.lang === "zh-CN" && v.name.includes("Yaoyao")) ||
+        voices.find((v) => v.lang === "zh-CN" && /女|girl|female/i.test(v.name)) ||
+        voices.find((v) => v.lang === "zh-CN") ||
+        voices.find((v) => v.lang.startsWith("zh")) ||
+        voices[0];
+    };
+    loadVoices();
+    synth.onvoiceschanged = loadVoices;
+    return () => { synth.cancel(); };
+  }, []);
+
+  // 启动时：立即语音问候 + 后台预热模型
+  useEffect(() => {
+    // 语音立即打招呼，不等后端
+    const t = setTimeout(() => speakText("你好，我是你的导游慧行"), 50);
+    // 后台静默发预热请求
+    fetch(`${API_URL}/api/chat/send`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message: "你好", session_id: sessionId }),
+    }).catch(() => {});
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const stopSpeaking = useCallback(() => {
+    const synth = synthRef.current;
+    if (synth) {
+      synth.cancel();
+      if (synth.paused) synth.resume();  // 防止引擎卡住
+      speakingRef.current = false;
+      setSpeaking(false);
     }
+  }, []);
+
+  const handleAdminLogin = () => {
+    if (pwdInput === "Lingshan001") {
+      setShowPwdModal(false);
+      setPwdInput("");
+      setPwdError(false);
+      router.push("/admin");
+    } else {
+      setPwdError(true);
+    }
+  };
+
+  const speakText = useCallback((raw: string) => {
+    const synth = synthRef.current;
+    if (!synth) return;
+    // Chrome bug: cancel() 后引擎卡 paused=true，下次 speak() 会等 2s 超时。
+    // 解法：cancel → 如果 paused 就 resume → 立即 speak
+    synth.cancel();
+    if (synth.paused) synth.resume();
+    const clean = raw
+      .replace(/\*\*(.+?)\*\*/g, "$1")
+      .replace(/\*(.+?)\*/g, "$1")
+      .replace(/[_~`#>]/g, "")
+      .replace(/[\u{1F000}-\u{1FFFF}]/gu, "")
+      .replace(/[\u{2600}-\u{27BF}]/gu, "")
+      .replace(/[\u{FE00}-\u{FEFF}]/gu, "")
+      .replace(/^\s*[•●▪▸-]\s*/gm, "")
+      .trim();
+    if (!clean) return;
+
+    const u = new SpeechSynthesisUtterance(clean);
+    u.lang = "zh-CN";
+    u.rate = 1.2;
+    u.pitch = 1.15;
+    if (voiceRef.current) u.voice = voiceRef.current;
+
+    speakingRef.current = true;
+    setSpeaking(true);
+    u.onend = () => {
+      speakingRef.current = false;
+      setSpeaking(false);
+    };
+    u.onerror = () => {
+      speakingRef.current = false;
+      setSpeaking(false);
+    };
+    synth.speak(u);
   }, []);
 
   const startListening = () => {
@@ -102,7 +177,7 @@ export default function Home() {
       const data = await res.json();
       const reply = data.reply || "阿弥陀佛，小僧一时语塞，请稍后再问。";
       setMessages((prev) => [...prev, { role: "assistant", text: reply }]);
-      playTTS(reply);
+      speakText(reply);
     } catch {
       setMessages((prev) => [
         ...prev,
@@ -127,11 +202,30 @@ export default function Home() {
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
-      const routeText =
-        `为您推荐 **${pref}** 路线：\n\n` +
-        data.route.map((s: string, i: number) => `${i + 1}. **${s}**`).join("\n");
+
+      // 根据后端返回的详细信息，构建每条路线专属的展示内容
+      let routeText = "";
+      if (data.route_name && data.duration && data.path) {
+        // 新版详细路线回复
+        routeText = `🏯 **${data.route_name}**（${data.duration}）\n\n`;
+        routeText += `📍 **路线**：${data.path}\n\n`;
+        if (data.highlights && data.highlights.length > 0) {
+          routeText += `🌟 **核心亮点**：\n${data.highlights.map((h: string) => `  • ${h}`).join("\n")}\n\n`;
+        }
+        if (data.experiences && data.experiences.length > 0) {
+          routeText += `✨ **特色体验**：\n${data.experiences.map((e: string) => `  • ${e}`).join("\n")}`;
+        }
+      } else if (data.spots) {
+        // 兼容旧版格式
+        routeText =
+          `为您推荐 **${pref}** 路线：\n\n` +
+          data.spots.map((s: string, i: number) => `${i + 1}. **${s}**`).join("\n");
+      } else {
+        routeText = `为您推荐 **${pref}** 路线，请参考以上景点游览。`;
+      }
+
       setMessages((prev) => [...prev, { role: "assistant", text: routeText }]);
-      playTTS(`为您推荐${pref}路线，共${data.route.length}个景点`);
+      speakText(`为您推荐${data.route_name || pref}，${data.duration || ""}，共${data.spots ? data.spots.length : "多个"}个站点`);
     } catch {
       setMessages((prev) => [
         ...prev,
@@ -148,9 +242,29 @@ export default function Home() {
       {/* 左侧：数字人展示区 + 偏好选择 */}
       <div className="w-1/2 flex flex-col items-center justify-center p-8 border-r border-amber-200">
         <div className="w-80 h-96 rounded-2xl bg-amber-100/50 border-2 border-amber-300 flex flex-col items-center justify-center mb-4 shadow-lg relative overflow-hidden">
-          <Live2DViewer />
+          <div className="text-center text-amber-800">
+            <div className="text-6xl mb-4">🙏</div>
+            <p className="text-lg font-bold">慧行 · AI数字人导游</p>
+            <p className="text-sm text-amber-600 mt-2">Live2D组件将在此渲染</p>
+          </div>
+          {speaking && (
+            <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-2">
+              <span className="inline-flex gap-1">
+                <span className="w-1.5 h-4 bg-green-500 rounded-full animate-pulse" style={{ animationDelay: "0ms" }} />
+                <span className="w-1.5 h-6 bg-green-500 rounded-full animate-pulse" style={{ animationDelay: "120ms" }} />
+                <span className="w-1.5 h-5 bg-green-500 rounded-full animate-pulse" style={{ animationDelay: "240ms" }} />
+                <span className="w-1.5 h-4 bg-green-500 rounded-full animate-pulse" style={{ animationDelay: "360ms" }} />
+              </span>
+              <button
+                onClick={stopSpeaking}
+                className="px-2 py-0.5 bg-red-500 hover:bg-red-600 text-white text-xs rounded-full transition"
+              >
+                停止 ⏹
+              </button>
+            </div>
+          )}
           {loading && (
-            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10">
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2">
               <span className="inline-flex gap-1">
                 <span className="w-2 h-2 bg-amber-500 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
                 <span className="w-2 h-2 bg-amber-500 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
@@ -182,8 +296,17 @@ export default function Home() {
 
       {/* 右侧：对话区 */}
       <div className="w-1/2 flex flex-col bg-white/80 backdrop-blur">
-        <div className="bg-amber-600 text-white p-4 text-center font-bold text-lg shadow-md">
-          灵山AI禅意导游
+        <div className="bg-amber-600 text-white p-4 text-center font-bold text-lg shadow-md flex items-center justify-center gap-3">
+          <span>灵山AI禅意导游</span>
+          {speaking && (
+            <button
+              onClick={stopSpeaking}
+              className="px-3 py-1 bg-red-500 hover:bg-red-600 text-white text-xs rounded-full transition flex items-center gap-1"
+              title="停止语音"
+            >
+              ⏹ 停止说话
+            </button>
+          )}
         </div>
 
         <div ref={chatRef} className="flex-1 overflow-y-auto p-4 space-y-3">
@@ -261,6 +384,56 @@ export default function Home() {
           </button>
         </div>
       </div>
+
+      {/* 运营管理入口 — 右上角极隐齿轮 */}
+      <button
+        onClick={() => { setShowPwdModal(true); setPwdInput(""); setPwdError(false); }}
+        className="fixed top-3 right-3 w-7 h-7 bg-transparent hover:bg-white/40 rounded-full flex items-center justify-center text-gray-300 hover:text-gray-500 transition z-40"
+        title="运营管理"
+      >
+        ⚙
+      </button>
+
+      {/* 密码验证弹窗 */}
+      {showPwdModal && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-2xl p-6 w-80">
+            <h3 className="text-lg font-bold text-gray-800 mb-1">运营管理</h3>
+            <p className="text-xs text-gray-400 mb-4">请输入管理密码以继续</p>
+            <input
+              type="password"
+              value={pwdInput}
+              onChange={(e) => { setPwdInput(e.target.value); setPwdError(false); }}
+              onKeyDown={(e) => e.key === "Enter" && handleAdminLogin()}
+              placeholder="请输入密码"
+              autoFocus
+              className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 ${
+                pwdError
+                  ? "border-red-400 focus:ring-red-300"
+                  : "border-gray-300 focus:ring-amber-300"
+              }`}
+            />
+            {pwdError && (
+              <p className="text-red-500 text-xs mt-1">密码错误，请重试</p>
+            )}
+            <div className="flex gap-2 mt-4">
+              <button
+                onClick={() => { setShowPwdModal(false); setPwdInput(""); setPwdError(false); }}
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50 transition"
+              >
+                取消
+              </button>
+              <button
+                onClick={handleAdminLogin}
+                disabled={!pwdInput.trim()}
+                className="flex-1 px-3 py-2 bg-amber-600 text-white rounded-lg text-sm hover:bg-amber-700 transition disabled:opacity-50"
+              >
+                确认
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

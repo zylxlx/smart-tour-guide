@@ -35,9 +35,9 @@ async def text_to_speech(req: TTSRequest):
 
 @router.post("/recommend")
 async def recommend(req: RecommendRequest):
-    """个性化路线推荐"""
-    spots = rag_service.recommend_spots(req.preference)
-    return {"preference": req.preference, "route": spots}
+    """个性化路线推荐 — 每条路线返回完全不同内容"""
+    result = rag_service.recommend_spots(req.preference)
+    return result
 
 @router.post("/voice")
 async def voice_to_text(file: UploadFile = File(...)):

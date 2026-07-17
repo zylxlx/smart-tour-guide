@@ -10,20 +10,14 @@
   },
   "dependencies": {
     "echarts": "^6.1.0",
-    "live2d": "^0.0.2",
-    "live2d-widget-model-chitose": "^1.0.5",
-    "live2d-widget-model-haru": "^1.0.5",
-    "live2d-widget-model-haruto": "^1.0.5",
-    "live2d-widget-model-koharu": "^1.0.5",
-    "live2d-widget-model-shizuku": "^1.0.5",
     "next": "16.2.9",
-    "pixi-live2d-display": "^0.4.0",
-    "pixi.js": "^6.5.10",
     "react": "19.2.4",
     "react-dom": "19.2.4"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@tarojs/plugin-framework-react": "^4.2.0",
+    "@tarojs/plugin-platform-weapp": "^4.2.0",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
