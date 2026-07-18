@@ -4,8 +4,11 @@ from pydantic import BaseModel
 from app.services.llm_service import llm_service
 from app.services.tts_service import tts_service
 from app.services.rag_service import rag_service
+import asyncio
+import hashlib
 import json
 import os
+import re
 import tempfile
 
 router = APIRouter()
@@ -20,34 +23,92 @@ class RecommendRequest(BaseModel):
 class TTSRequest(BaseModel):
     text: str
 
+
+# ---- shared TTS helpers ----
+
+def _clean_for_tts(text: str) -> str:
+    """Remove emoji/special chars, keep CJK + digits + basic punctuation."""
+    # Strip emoji ranges
+    cleaned = re.sub(r'[\U0001F000-\U0001FFFF]', '', text)
+    cleaned = re.sub(r'[☀-➿]', '', cleaned)
+    cleaned = re.sub(r'[︀-﻿]', '', cleaned)
+    # Keep only CJK, fullwidth forms, digits, whitespace, common punctuation
+    cleaned = re.sub(r'[^一-鿿　-〿＀-￯\d\n,，。.!！?？:：、\s]', '', cleaned)
+    cleaned = re.sub(r'\n+', '，', cleaned)
+    return cleaned.strip()
+
+
+async def _generate_tts_url(text: str) -> str:
+    """Generate TTS audio file (cached) and return the static URL path."""
+    cache_dir = os.path.join(os.path.dirname(__file__), '..', 'data', 'tts_cache')
+    os.makedirs(cache_dir, exist_ok=True)
+    key = hashlib.md5(text.encode()).hexdigest()[:12]
+    filename = f'{key}.wav'
+    filepath = os.path.join(cache_dir, filename)
+    if not os.path.exists(filepath):
+        await tts_service.synthesize_to_file(text, filepath)
+    return f'/static/tts/{filename}'
+
+
 @router.post("/send")
 async def chat(req: ChatRequest):
-    """文本对话接口 — 含情感分析"""
+    """文本对话接口 — 含情感分析 + TTS（并行化LLM调用）"""
     context = rag_service.search(req.message)
-    reply = await llm_service.chat(req.message, context)
-    emotion = await llm_service.analyze_emotion(req.message)
-    # 保存对话记录
-    from app.services.user_service import save_conversation
+
+    # 并行：LLM 对话 + 情感分析（容错：API 失败时降级本地回复）
+    try:
+        reply, emotion = await asyncio.gather(
+            llm_service.chat(req.message, context),
+            llm_service.analyze_emotion(req.message),
+        )
+    except Exception:
+        reply = llm_service.chat_sync(req.message, context) if hasattr(llm_service, 'chat_sync') else (
+            "阿弥陀佛，慧行暂时无法联网回答，请您稍后再试。\n"
+            "您可以尝试以下操作：\n"
+            "1. 选择上方偏好标签获取游览路线\n"
+            "2. 询问常见问题（灵山大佛多高、九龙灌浴几点等）\n"
+            "3. 联系现场工作人员"
+        )
+        emotion = "中性"
+
+    # 生成 TTS（与回复文本同时进行，前端拿到 tts_url 即可直接播放）
+    tts_text = _clean_for_tts(reply)
+    tts_url = await _generate_tts_url(tts_text) if tts_text else None
+
+    # 保存对话记录（首次自动记录登录）
+    from app.services.user_service import save_conversation, save_login
+    import os as _os
+    _login_flag = _os.path.join(_os.path.dirname(__file__), "..", "data", f"_login_{req.session_id}")
+    if not _os.path.exists(_login_flag):
+        save_login(req.session_id)
+        with open(_login_flag, "w") as _f: _f.write("1")
     save_conversation(req.session_id, req.message, reply)
-    return {"reply": reply, "session_id": req.session_id, "emotion": emotion}
+    return {"reply": reply, "session_id": req.session_id, "emotion": emotion, "tts_url": tts_url}
 
 @router.post("/tts")
 async def text_to_speech(req: TTSRequest):
     """TTS → 保存为文件，返回静态URL给小程序播放"""
-    import hashlib
-    cache_dir = os.path.join(os.path.dirname(__file__), "..", "data", "tts_cache")
-    os.makedirs(cache_dir, exist_ok=True)
-    key = hashlib.md5(req.text.encode()).hexdigest()[:12]
-    filename = f"{key}.wav"
-    filepath = os.path.join(cache_dir, filename)
-    if not os.path.exists(filepath):
-        await tts_service.synthesize_to_file(req.text, filepath)
-    return {"url": f"/static/tts/{filename}", "status": "ok"}
+    url = await _generate_tts_url(req.text)
+    return {"url": url, "status": "ok"}
 
 @router.post("/recommend")
 async def recommend(req: RecommendRequest):
-    """个性化路线推荐 — 每条路线返回完全不同内容"""
+    """个性化路线推荐 — 返回结构化路线数据 + TTS 语音"""
     result = rag_service.recommend_spots(req.preference)
+
+    # TTS 语音文本 — 只说路线名和景点数
+    tts_text = ""
+    if result.get("route_name"):
+        spot_count = len(result.get("path", "").split("→")) if result.get("path") else 0
+        tts_text = f"为您推荐{result['route_name']}"
+        if result.get("duration"):
+            tts_text += f"，约{result['duration']}"
+        tts_text += f"，共{spot_count}个景点"
+    if not tts_text:
+        tts_text = f"为您推荐{req.preference}路线"
+
+    tts_url = await _generate_tts_url(tts_text) if tts_text else None
+    result["tts_url"] = tts_url
     return result
 
 _asr_model = None

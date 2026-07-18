@@ -1,7 +1,7 @@
 /* ===== 数字人容器 ===== */
 .dh-body {
-  width: 200px;
-  height: 280px;
+  width: 340px;
+  height: 460px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -10,9 +10,9 @@
 
 /* ===== 头部 ===== */
 .dh-head {
-  width: 120px;
-  height: 130px;
-  border-radius: 60px 60px 50px 50px;
+  width: 200px;
+  height: 220px;
+  border-radius: 100px 100px 85px 85px;
   background: linear-gradient(180deg, #f5d5a0 0%, #e8c088 60%, #d4a574 100%);
   position: relative;
   z-index: 2;
@@ -21,60 +21,60 @@
 /* ===== 脸 ===== */
 .dh-face {
   position: absolute;
-  top: 38px;
+  top: 65px;
   left: 50%;
   transform: translateX(-50%);
-  width: 70px;
+  width: 120px;
 }
 
 /* 眼睛 */
 .dh-eye {
-  width: 8px;
-  height: 8px;
+  width: 14px;
+  height: 14px;
   border-radius: 50%;
   background: #3d2b1f;
   position: absolute;
   top: 0;
 }
-.dh-eye.left  { left: 12px; }
-.dh-eye.right { right: 12px; }
+.dh-eye.left  { left: 20px; }
+.dh-eye.right { right: 20px; }
 
 /* 嘴巴 */
 .dh-mouth {
-  width: 16px;
-  height: 6px;
-  border-radius: 0 0 8px 8px;
+  width: 28px;
+  height: 10px;
+  border-radius: 0 0 14px 14px;
   background: #c97d6d;
   position: absolute;
-  top: 18px;
+  top: 30px;
   left: 50%;
   transform: translateX(-50%);
 }
 
 /* ===== 袈裟身体 ===== */
 .dh-robe {
-  width: 160px;
-  height: 150px;
+  width: 270px;
+  height: 240px;
   background: linear-gradient(180deg, #8b4513 0%, #6b3410 50%, #5a2d0d 100%);
-  border-radius: 80px 80px 20px 20px;
-  margin-top: -35px;
+  border-radius: 135px 135px 30px 30px;
+  margin-top: -60px;
   position: relative;
   z-index: 1;
 }
 
 /* 袈裟领口 */
 .dh-collar {
-  width: 50px;
-  height: 70px;
-  border-left: 3px solid #d4a017;
+  width: 80px;
+  height: 110px;
+  border-left: 4px solid #d4a017;
   position: absolute;
-  top: 10px;
-  left: 35px;
+  top: 15px;
+  left: 55px;
   transform: skewX(-10deg);
 }
 .dh-collar.right {
   left: auto;
-  right: 35px;
+  right: 55px;
   transform: skewX(10deg);
 }
 
@@ -92,8 +92,8 @@
 }
 .dh-listening .dh-eye {
   animation: blink 2s ease-in-out infinite;
-  width: 10px;
-  height: 10px;
+  width: 16px;
+  height: 16px;
 }
 
 /* ===== 说话动画 ===== */
@@ -103,8 +103,8 @@
 .dh-speaking .dh-mouth {
   animation: mouthOpen 0.3s ease-in-out infinite;
   border-radius: 50%;
-  width: 10px;
-  height: 10px;
+  width: 18px;
+  height: 18px;
   background: #5a2d0d;
 }
 
@@ -113,14 +113,14 @@
   animation: happyBounce 0.8s ease-in-out infinite;
 }
 .dh-happy .dh-eye {
-  border-radius: 6px 6px 2px 2px;
-  height: 5px;
-  width: 10px;
+  border-radius: 10px 10px 4px 4px;
+  height: 8px;
+  width: 16px;
 }
 .dh-happy .dh-mouth {
-  width: 20px;
-  height: 8px;
-  border-radius: 0 0 10px 10px;
+  width: 34px;
+  height: 14px;
+  border-radius: 0 0 17px 17px;
 }
 
 /* ===== 难过动画 ===== */
@@ -129,15 +129,15 @@
 }
 .dh-sad .dh-eye {
   border-radius: 50% 50% 0 0;
-  height: 4px;
-  width: 8px;
+  height: 6px;
+  width: 12px;
   background: #3d2b1f;
   animation: sadBlink 3s ease-in-out infinite;
 }
 .dh-sad .dh-mouth {
-  width: 12px;
-  height: 4px;
-  border-radius: 4px 4px 0 0;
+  width: 20px;
+  height: 6px;
+  border-radius: 10px 10px 0 0;
   background: #c97d6d;
   transform: rotate(180deg) translateX(-50%);
 }

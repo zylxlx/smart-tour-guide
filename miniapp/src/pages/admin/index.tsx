@@ -3,7 +3,8 @@ import { View, Text, ScrollView } from "@tarojs/components";
 import Taro from "@tarojs/taro";
 import "./index.scss";
 
-const API_URL = "http://localhost:8000";
+const API_URL = "http://192.168.2.72:8001";
+const SB_H = (Taro.getSystemInfoSync().statusBarHeight || 44) + 12;
 
 const TABS = [
   { key: "dashboard", label: "数据大屏" },
@@ -23,8 +24,6 @@ export default function Admin() {
   const [kTitle, setKTitle] = useState("");
   const [kContent, setKContent] = useState("");
   const [kCategory, setKCategory] = useState("景点知识");
-  const [userHistory, setUserHistory] = useState<any[]>([]);
-  const [feedbackStats, setFeedbackStats] = useState<any>(null);
 
   useEffect(() => {
     Taro.request({ url: `${API_URL}/api/admin/stats/overview` })
@@ -44,20 +43,20 @@ export default function Admin() {
       .finally(() => Taro.hideLoading());
   };
 
-  const over = consumption?.overview;
-  const cats = consumption?.category_breakdown || [];
-  const topSpots = consumption?.top_spots || [];
-  const monthly = consumption?.monthly_trend || [];
-  const ages = consumption?.age_groups;
-  const genders = consumption?.gender_dist;
+  const over = consumption ? consumption.overview : undefined;
+  const cats = consumption ? consumption.category_breakdown || [] : [];
+  const topSpots = consumption ? consumption.top_spots || [] : [];
+  const monthly = consumption ? consumption.monthly_trend || [] : [];
+  const ages = consumption ? consumption.age_groups : undefined;
+  const genders = consumption ? consumption.gender_dist : undefined;
 
   const maxCat = Math.max(...cats.map((c: any) => c.value), 1);
 
   return (
     <View className="admin-page">
-      <View className="admin-header">
-        <Text className="admin-title">灵山AI导游 · 管理后台</Text>
-        <Text className="admin-back" onClick={() => Taro.navigateBack()}>返回</Text>
+      <View className="admin-header" style={`padding-top:${SB_H}px`}>
+        <View className="admin-back" onClick={() => Taro.navigateBack()}><Text>〈 返回</Text></View>
+        <View className="admin-title"><Text>灵山AI导游 · 管理后台</Text></View>
       </View>
 
       <ScrollView className="admin-tabs" scrollX>
@@ -72,7 +71,7 @@ export default function Admin() {
         {activeTab === "dashboard" && (
           <View>
             <View className="stat-cards">
-              <View className="stat-card"><Text className="stat-label">累计服务</Text><Text className="stat-val">{stats?.total_chats || 0}</Text></View>
+              <View className="stat-card"><Text className="stat-label">累计服务</Text><Text className="stat-val">{stats ? stats.total_chats || 0 : 0}</Text></View>
               <View className="stat-card"><Text className="stat-label">准确率</Text><Text className="stat-val">≥90%</Text></View>
               <View className="stat-card"><Text className="stat-label">响应时间</Text><Text className="stat-val">&lt;3秒</Text></View>
               <View className="stat-card"><Text className="stat-label">正面评价</Text><Text className="stat-val">高</Text></View>
@@ -96,10 +95,10 @@ export default function Admin() {
               <View>
                 {/* 总览 */}
                 <View className="stat-cards">
-                  <View className="stat-card"><Text className="stat-label">游客数</Text><Text className="stat-val">{over?.total_visitors}</Text></View>
-                  <View className="stat-card"><Text className="stat-label">总营收</Text><Text className="stat-val">¥{over?.total_revenue?.toLocaleString()}</Text></View>
-                  <View className="stat-card"><Text className="stat-label">人均消费</Text><Text className="stat-val">¥{over?.avg_per_person}</Text></View>
-                  <View className="stat-card"><Text className="stat-label">均停留</Text><Text className="stat-val">{over?.avg_stay_hours}h</Text></View>
+                  <View className="stat-card"><Text className="stat-label">游客数</Text><Text className="stat-val">{(over ? over.total_visitors : 0)}</Text></View>
+                  <View className="stat-card"><Text className="stat-label">总营收</Text><Text className="stat-val">¥{(over && over.total_revenue ? over.total_revenue.toLocaleString() : "")}</Text></View>
+                  <View className="stat-card"><Text className="stat-label">人均消费</Text><Text className="stat-val">¥{over ? over.avg_per_person : ""}</Text></View>
+                  <View className="stat-card"><Text className="stat-label">均停留</Text><Text className="stat-val">{over ? over.avg_stay_hours : ""}h</Text></View>
                 </View>
 
                 {/* 消费结构 */}
@@ -147,7 +146,7 @@ export default function Admin() {
                         {Object.entries(ages).map(([k, v]: any) => (
                           <View key={k} className="bar-row">
                             <Text className="bar-label" style="font-size:20px">{k}</Text>
-                            <View className="bar-track"><View className="bar-fill blue" style={{width: `${(v / over?.total_visitors) * 100}%`}} /></View>
+                            <View className="bar-track"><View className="bar-fill blue" style={{width: `${(v / (over ? over.total_visitors : 0)) * 100}%`}} /></View>
                             <Text className="bar-val">{v}人</Text>
                           </View>
                         ))}
@@ -157,7 +156,7 @@ export default function Admin() {
                         {genders && Object.entries(genders).map(([k, v]: any) => (
                           <View key={k} className="bar-row">
                             <Text className="bar-label" style="font-size:20px">{k}</Text>
-                            <View className="bar-track"><View className={`bar-fill ${k === "男" ? "blue" : "pink"}`} style={{width: `${(v / over?.total_visitors) * 100}%`}} /></View>
+                            <View className="bar-track"><View className={`bar-fill ${k === "男" ? "blue" : "pink"}`} style={{width: `${(v / (over ? over.total_visitors : 0)) * 100}%`}} /></View>
                             <Text className="bar-val">{v}人</Text>
                           </View>
                         ))}
@@ -181,9 +180,7 @@ export default function Admin() {
           />
         )}
 
-        {activeTab === "users" && (
-          <UsersTab history={userHistory} setHistory={setUserHistory} fbk={feedbackStats} setFbk={setFeedbackStats} />
-        )}
+        {activeTab === "users" && <UsersTab />}
 
         {activeTab === "dhconfig" && (
           <View className="card">
@@ -250,7 +247,7 @@ function KnowledgeTab({ list, setList, title, setTitle, content, setContent, cat
       if (upRes.statusCode === 200) { load(); Taro.showToast({ title: "上传成功", icon: "none" }); }
     } catch (e: any) {
       Taro.hideLoading();
-      if (e?.errMsg?.includes("cancel")) return;
+      if ((e && e.errMsg ? e.errMsg.includes("cancel") : false)) return;
       Taro.showToast({ title: "上传失败，请用粘贴方式", icon: "none" });
     }
   };
@@ -299,45 +296,155 @@ function KnowledgeTab({ list, setList, title, setTitle, content, setContent, cat
   );
 }
 
-/* ========== 用户管理组件 ========== */
-function UsersTab({ history, setHistory, fbk, setFbk }: any) {
+/* ========== 用户管理组件 — 闭环：登录→对话→反馈 ========== */
+function UsersTab({ }: any) {
   const [loaded, setLoaded] = useState(false);
+  const [subTab, setSubTab] = useState("sessions");
+  const [sessions, setSessions] = useState<any[]>([]);
+  const [history, setHistory] = useState<any[]>([]);
+  const [fbk, setFbk] = useState<any>(null);
+  const [detail, setDetail] = useState<any>(null);
+  const [detailSid, setDetailSid] = useState("");
 
   const load = () => {
+    Taro.request({ url: `${API_URL}/api/admin/user/sessions` })
+      .then((r) => { if (r.statusCode === 200) setSessions((r.data as any).sessions || []); })
+      .catch(() => {});
     Taro.request({ url: `${API_URL}/api/admin/user/history` })
-      .then((r) => { if (r.statusCode === 200) { setHistory((r.data as any).history?.reverse() || []); setLoaded(true); } })
+      .then((r) => { if (r.statusCode === 200) { const h = (r.data as any).history || []; setHistory([...h].reverse()); } })
       .catch(() => {});
     Taro.request({ url: `${API_URL}/api/admin/user/feedback-stats` })
       .then((r) => { if (r.statusCode === 200) setFbk(r.data); })
       .catch(() => {});
+    setLoaded(true);
+  };
+
+  const viewDetail = (sid: string) => {
+    setDetailSid(sid);
+    Taro.request({ url: `${API_URL}/api/admin/user/session-detail`, data: { session_id: sid } })
+      .then((r) => { if (r.statusCode === 200) setDetail(r.data); })
+      .catch(() => {});
+    setSubTab("detail");
   };
 
   useEffect(() => { if (!loaded) load(); }, []);
 
+  const SUB_TABS = [
+    { key: "sessions", label: "登录记录" },
+    { key: "history", label: "对话历史" },
+    { key: "feedback", label: "反馈评分" },
+  ];
+
   return (
     <View>
-      <View className="card">
-        <Text className="card-title">用户反馈统计</Text>
-        {fbk && (
-          <View className="fbk-stats">
-            <View className="fbk-card good"><Text className="fbk-num">{fbk.good}</Text><Text>好评</Text></View>
-            <View className="fbk-card bad"><Text className="fbk-num">{fbk.bad}</Text><Text>差评</Text></View>
-            <View className="fbk-card"><Text className="fbk-num">{fbk.rate}%</Text><Text>好评率</Text></View>
-          </View>
-        )}
-        {!fbk && <Text className="empty-tip">暂无数据</Text>}
+      {/* 闭环总览 */}
+      <View className="stat-cards">
+        <View className="stat-card"><Text className="stat-label">登录会话</Text><Text className="stat-val">{sessions.length}</Text></View>
+        <View className="stat-card"><Text className="stat-label">对话条数</Text><Text className="stat-val">{history.length}</Text></View>
+        <View className="stat-card"><Text className="stat-label">好评率</Text><Text className="stat-val">{fbk ? fbk.rate + "%" : "N/A"}</Text></View>
       </View>
-      <View className="card">
-        <Text className="card-title">对话记录（{history.length}条）</Text>
-        {history.slice(0, 30).map((h: any, i: number) => (
-          <View key={i} className="hist-item">
-            <Text className="hist-time">{h.time}</Text>
-            <Text className="hist-user">👤 {h.user?.substring(0, 30)}</Text>
-            <Text className="hist-ai">🤖 {h.assistant?.substring(0, 80)}</Text>
+
+      {/* 子Tab切换 */}
+      <ScrollView className="admin-tabs" scrollX>
+        {SUB_TABS.map((t) => (
+          <View key={t.key} className={`tab ${subTab === t.key ? "active" : ""}`} onClick={() => setSubTab(t.key)}>
+            <Text>{t.label}</Text>
           </View>
         ))}
-        {history.length === 0 && <Text className="empty-tip">暂无记录</Text>}
-      </View>
+        {subTab === "detail" && (
+          <View className="tab active"><Text>会话详情</Text></View>
+        )}
+      </ScrollView>
+
+      {/* 登录记录 */}
+      {subTab === "sessions" && (
+        <View className="card">
+          <Text className="card-title">登录记录（{sessions.length}次）</Text>
+          {sessions.length === 0 && <Text className="empty-tip">暂无登录记录</Text>}
+          {sessions.map((s: any, i: number) => (
+            <View key={i} className="hist-item" onClick={() => viewDetail(s.session_id)}>
+              <View className="loop-row">
+                <View className="loop-info">
+                  <Text className="hist-time">{s.login_time}</Text>
+                  <Text className="hist-user">会话: {s.session_id.substring(13, 25)}...</Text>
+                </View>
+                <View className="loop-badges">
+                  <Text className="loop-badge chat">对话×{s.chat_count}</Text>
+                  {s.rating && <Text className={`loop-badge ${s.rating === "good" ? "good" : "bad"}`}>{s.rating === "good" ? "👍" : "👎"}</Text>}
+                </View>
+              </View>
+            </View>
+          ))}
+        </View>
+      )}
+
+      {/* 对话历史 */}
+      {subTab === "history" && (
+        <View className="card">
+          <Text className="card-title">对话记录（{history.length}条）</Text>
+          {history.length === 0 && <Text className="empty-tip">暂无对话记录</Text>}
+          {history.slice(0, 50).map((h: any, i: number) => (
+            <View key={i} className="hist-item">
+              <Text className="hist-time">{h.time} ｜ 会话: {h.session_id ? h.session_id.substring(13, 25) : "?"}...</Text>
+              <Text className="hist-user">👤 {(h.user ? h.user.substring(0, 30) : "")}</Text>
+              <Text className="hist-ai">🤖 {(h.assistant ? h.assistant.substring(0, 80) : "")}</Text>
+            </View>
+          ))}
+        </View>
+      )}
+
+      {/* 反馈评分 */}
+      {subTab === "feedback" && (
+        <View>
+          <View className="card">
+            <Text className="card-title">反馈总览</Text>
+            {fbk ? (
+              <View className="fbk-stats">
+                <View className="fbk-card good"><Text className="fbk-num">{fbk.good}</Text><Text>好评</Text></View>
+                <View className="fbk-card bad"><Text className="fbk-num">{fbk.bad}</Text><Text>差评</Text></View>
+                <View className="fbk-card"><Text className="fbk-num">{fbk.rate}%</Text><Text>好评率</Text></View>
+                <View className="fbk-card"><Text className="fbk-num">{fbk.total}</Text><Text>总计</Text></View>
+              </View>
+            ) : (
+              <Text className="empty-tip">暂无反馈数据</Text>
+            )}
+          </View>
+          {fbk && fbk.recent && (
+            <View className="card">
+              <Text className="card-title">最近反馈</Text>
+              {fbk.recent.map((f: any, i: number) => (
+                <View key={i} className="hist-item">
+                  <Text className="hist-time">{f.time} {f.rating === "good" ? "👍" : "👎"}</Text>
+                  <Text className="hist-user">{(f.message ? f.message.substring(0, 60) : "")}</Text>
+                </View>
+              ))}
+            </View>
+          )}
+        </View>
+      )}
+
+      {/* 会话详情 */}
+      {subTab === "detail" && detail && (
+        <View className="card">
+          <Text className="card-title">会话详情: {detailSid.substring(13, 32)}...</Text>
+          <Text className="empty-tip" style="font-size:22px">对话数: {detail.chats.length} 条</Text>
+          {detail.chats.map((c: any, i: number) => (
+            <View key={i} className="hist-item">
+              <Text className="hist-time">{c.time}</Text>
+              <Text className="hist-user">👤 {(c.user ? c.user.substring(0, 60) : "")}</Text>
+              <Text className="hist-ai">🤖 {(c.assistant ? c.assistant.substring(0, 120) : "")}</Text>
+            </View>
+          ))}
+          {detail.feedbacks && detail.feedbacks.length > 0 && (
+            <View style="margin-top:16px">
+              <Text className="card-title">反馈</Text>
+              {detail.feedbacks.map((f: any, i: number) => (
+                <Text key={i} className="hist-time">{f.rating === "good" ? "👍" : "👎"} {f.time}</Text>
+              ))}
+            </View>
+          )}
+        </View>
+      )}
     </View>
   );
 }

@@ -1,9 +1,10 @@
-"""用户对话历史 & 反馈存储"""
+"""用户登录、对话历史 & 反馈存储 — 闭环管理"""
 import json
 import os
 from datetime import datetime
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
+LOGIN_FILE = os.path.join(DATA_DIR, "login_records.json")
 HISTORY_FILE = os.path.join(DATA_DIR, "chat_history.json")
 FEEDBACK_FILE = os.path.join(DATA_DIR, "feedback.json")
 
@@ -22,6 +23,24 @@ def _save(path, data):
         json.dump(data, f, ensure_ascii=False, indent=2)
 
 
+def save_login(session_id: str, source: str = "wechat"):
+    """记录用户登录（打开小程序）"""
+    logins = _load(LOGIN_FILE)
+    logins.append({
+        "session_id": session_id,
+        "source": source,
+        "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+    })
+    if len(logins) > 500:
+        logins = logins[-500:]
+    _save(LOGIN_FILE, logins)
+
+
+def get_login_records(limit: int = 50):
+    """获取登录记录列表"""
+    return _load(LOGIN_FILE)[-limit:][::-1]
+
+
 def save_conversation(session_id: str, user_msg: str, assistant_reply: str):
     history = _load(HISTORY_FILE)
     history.append({
@@ -30,7 +49,6 @@ def save_conversation(session_id: str, user_msg: str, assistant_reply: str):
         "assistant": assistant_reply,
         "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
     })
-    # 只保留最近 500 条
     if len(history) > 500:
         history = history[-500:]
     _save(HISTORY_FILE, history)
@@ -69,3 +87,29 @@ def get_feedback_stats():
         "rate": round(good / total * 100, 1) if total > 0 else 0,
         "recent": feedbacks[-10:][::-1],
     }
+
+
+def get_sessions():
+    """闭环数据：合并登录→对话→反馈，按 session 聚合"""
+    logins = _load(LOGIN_FILE)
+    chats = _load(HISTORY_FILE)
+    feedbacks = _load(FEEDBACK_FILE)
+
+    session_map = {}
+    for l in logins:
+        sid = l["session_id"]
+        session_map[sid] = {"session_id": sid, "login_time": l["time"], "chat_count": 0, "rating": None, "last_msg": ""}
+
+    for c in chats:
+        sid = c["session_id"]
+        if sid not in session_map:
+            session_map[sid] = {"session_id": sid, "login_time": c["time"], "chat_count": 0, "rating": None, "last_msg": ""}
+        session_map[sid]["chat_count"] += 1
+        session_map[sid]["last_msg"] = c["user"][:50] if c["user"] else ""
+
+    for f in feedbacks:
+        sid = f["session_id"]
+        if sid in session_map:
+            session_map[sid]["rating"] = f["rating"]
+
+    return sorted(session_map.values(), key=lambda x: x["login_time"], reverse=True)[:50]

@@ -9,15 +9,39 @@
 /* ===== 顶部 ===== */
 .header {
   background: #b8860b;
-  padding: 20px;
+  padding: 30px 20px 24px;
   text-align: center;
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 .header-title {
   color: #fff;
-  font-size: 34px;
+  font-size: 96px;
   font-weight: bold;
 }
+
+/* ===== 左上角齿轮 ===== */
+.gear-btn {
+  position: absolute;
+  left: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 26px;
+  color: rgba(255,255,255,0.55);
+  background: transparent;
+  border: none;
+  padding: 0;
+  line-height: 40px;
+}
+.gear-btn::after { border: none; }
 
 /* ===== 偏好标签（顶部） ===== */
 .pref-bar {
@@ -31,12 +55,12 @@
   flex-shrink: 0;
 }
 .pref-tag {
-  padding: 6px 18px;
+  padding: 8px 22px;
   border-radius: 40px;
   border: 1px solid #d4a017;
   background: #fff;
   color: #8b4513;
-  font-size: 24px;
+  font-size: 40px;
 }
 .pref-tag.active {
   background: #b8860b;
@@ -44,72 +68,23 @@
   border-color: #b8860b;
 }
 
-/* ===== 数字人顶部栏（有消息时，独立不被遮挡） ===== */
-.dh-bar {
+/* ===== 数字人区域 — 固定占上方 2/3 ===== */
+.dh-area {
+  flex: 2 0 0%;
   display: flex;
-  align-items: center;
-  gap: 16px;
-  padding: 12px 20px;
-  background: rgba(255, 248, 235, 0.95);
-  border-bottom: 2px solid #d4a017;
-  flex-shrink: 0;
-}
-.dh-bar-box {
-  width: 80px;
-  height: 106px;
-  background: rgba(255, 248, 235, 0.6);
-  border: 2px solid #d4a017;
-  border-radius: 16px;
-  display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0;
-}
-.dh-bar-info {
-  display: flex;
-  flex-direction: column;
-}
-.dh-bar-name {
-  color: #8b4513;
-  font-size: 28px;
-  font-weight: bold;
-}
-.dh-bar-desc {
-  color: #999;
-  font-size: 22px;
-  margin-top: 4px;
-}
-
-/* ===== 对话区 ===== */
-.chat-area {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
+  padding: 10px 20px;
   position: relative;
   overflow: hidden;
-  padding: 0 20px;
-}
-.msg-list {
-  flex: 1;
-  height: 0;
-  min-height: 0;
-  padding-top: 12px;
-}
-
-/* ===== 数字人：无消息时居中 ===== */
-.dh-wrapper.center {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
 }
 
 .dh-box {
-  width: 180px;
-  height: 240px;
+  width: 100%;
+  flex: 1;
+  max-width: 620px;
+  max-height: 700px;
   background: rgba(255, 248, 235, 0.6);
   border: 2px solid #d4a017;
   border-radius: 28px;
@@ -118,36 +93,69 @@
   align-items: center;
   justify-content: center;
   box-shadow: 0 4px 16px rgba(184, 134, 11, 0.1);
+  flex-shrink: 0;
 }
 
 .dh-name {
   color: #8b4513;
-  font-size: 22px;
+  font-size: 96px;
   font-weight: bold;
-  margin-top: 6px;
+  margin-top: 24px;
+  flex-shrink: 0;
+}
+
+.dh-status-text {
+  color: #999;
+  font-size: 72px;
+  margin-top: 16px;
+  flex-shrink: 0;
 }
 
 /* ===== 欢迎文字（无消息时） ===== */
 .welcome-text {
-  margin-top: 16px;
+  margin-top: 24px;
   text-align: center;
+  flex-shrink: 0;
 }
 .welcome-text .title {
   color: #5c3d2e;
-  font-size: 30px;
+  font-size: 104px;
   display: block;
 }
 .welcome-text .sub {
   color: #999;
-  font-size: 24px;
+  font-size: 80px;
   display: block;
-  margin-top: 4px;
+  margin-top: 12px;
 }
-.welcome-text .tip {
+
+/* ===== 对话区 — 占下方 1/3 ===== */
+.chat-area {
+  flex: 1 0 0%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 0 20px;
+  min-height: 0;
+}
+
+.welcome-tip-area {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.tip {
   color: #ccc;
-  font-size: 20px;
-  display: block;
-  margin-top: 8px;
+  font-size: 64px;
+}
+
+.msg-list {
+  flex: 1;
+  height: 0;
+  min-height: 0;
+  padding-top: 8px;
+  padding-bottom: 4px;
 }
 
 /* ===== 消息列表 ===== */
@@ -164,10 +172,10 @@
 
 .msg-bubble {
   max-width: 80%;
-  padding: 12px 18px;
+  padding: 16px 22px;
   border-radius: 18px;
-  font-size: 26px;
-  line-height: 1.5;
+  font-size: 40px;
+  line-height: 1.6;
   white-space: pre-wrap;
 }
 .msg-bubble.user {
@@ -218,24 +226,41 @@
 .input-bar {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 14px 20px;
+  gap: 8px;
+  padding: 10px 16px;
   border-top: 1px solid #eee;
   background: #fff;
   flex-shrink: 0;
 }
 
+.voice-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
 .voice-btn {
-  width: 66px;
-  height: 66px;
+  width: 80px;
+  height: 80px;
   border-radius: 50%;
   background: #fdf5e6;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 34px;
+  font-size: 40px;
   flex-shrink: 0;
   transition: all 0.2s;
+  border: none;
+  padding: 0;
+}
+.voice-btn::after { border: none; }
+
+.voice-label {
+  font-size: 26px;
+  color: #999;
+  white-space: nowrap;
 }
 .stop-speak-btn {
   width: 66px;
@@ -259,38 +284,25 @@
 
 .msg-input {
   flex: 1;
-  height: 66px;
+  height: 88px;
   border: 1px solid #ddd;
-  border-radius: 34px;
-  padding: 0 22px;
-  font-size: 26px;
+  border-radius: 44px;
+  padding: 0 24px;
+  font-size: 36px;
 }
 
 .send-btn {
   background: #b8860b;
   color: #fff;
-  border-radius: 34px;
-  font-size: 24px;
+  border-radius: 44px;
+  font-size: 32px;
   flex-shrink: 0;
-  padding: 0 22px;
-  height: 66px;
-  line-height: 66px;
+  padding: 0 24px;
+  height: 88px;
+  line-height: 88px;
 }
 
-/* ===== 右上角齿轮 ===== */
-.gear-btn {
-  position: fixed;
-  top: 12px;
-  right: 16px;
-  width: 50px;
-  height: 50px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 30px;
-  z-index: 100;
-}
+/* 齿轮已移入 header 内部 — 见上方 .gear-btn */
 
 /* ===== 密码弹窗 ===== */
 .pwd-overlay {

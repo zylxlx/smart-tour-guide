@@ -6,18 +6,24 @@
 .admin-header {
   background: #333;
   color: #fff;
-  padding: 24px 30px;
+  padding: 24px 20px;
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  justify-content: center;
+  position: relative;
+}
+.admin-back {
+  position: absolute;
+  left: 20px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 24px;
+  color: #ccc;
 }
 .admin-title {
   font-size: 32px;
   font-weight: bold;
-}
-.admin-back {
-  font-size: 26px;
-  color: #ccc;
+  text-align: center;
 }
 
 .admin-tabs {
@@ -213,3 +219,12 @@
 .hist-time { font-size: 20px; color: #bbb; display: block; }
 .hist-user { font-size: 22px; color: #b8860b; display: block; margin-top: 4px; }
 .hist-ai { font-size: 22px; color: #333; display: block; margin-top: 4px; }
+
+/* ===== 闭环登录记录 ===== */
+.loop-row { display: flex; justify-content: space-between; align-items: center; }
+.loop-info { flex: 1; }
+.loop-badges { display: flex; gap: 8px; flex-shrink: 0; }
+.loop-badge { font-size: 20px; padding: 2px 10px; border-radius: 10px; }
+.loop-badge.chat { background: #e3f2fd; color: #1976d2; }
+.loop-badge.good { background: #e8f5e9; color: #388e3c; }
+.loop-badge.bad { background: #ffebee; color: #d32f2f; }

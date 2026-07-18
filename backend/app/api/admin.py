@@ -88,6 +88,25 @@ async def get_feedback_stats():
     from app.services.user_service import get_feedback_stats
     return get_feedback_stats()
 
+@router.get("/user/login-records")
+async def get_login_records():
+    from app.services.user_service import get_login_records
+    return {"records": get_login_records()}
+
+@router.get("/user/sessions")
+async def get_user_sessions():
+    """闭环: 登录→对话→反馈 聚合"""
+    from app.services.user_service import get_sessions
+    return {"sessions": get_sessions()}
+
+@router.get("/user/session-detail")
+async def get_session_detail(session_id: str):
+    from app.services.user_service import get_history, get_feedback_stats
+    chats = get_history(session_id=session_id, limit=100)
+    all_fb = get_feedback_stats()
+    session_fb = [f for f in all_fb.get("recent", []) if f["session_id"] == session_id]
+    return {"session_id": session_id, "chats": chats, "feedbacks": session_fb}
+
 class FeedbackRequest(BaseModel):
     session_id: str = ""
     message: str = ""
