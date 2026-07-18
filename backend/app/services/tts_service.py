@@ -38,7 +38,8 @@ class TTSService:
             self._local_available = False
 
     async def synthesize(self, text: str) -> io.BytesIO:
-        if self._local_available and self._sapi:
+        # 优先用云端 Edge-TTS（音色更自然），本地 SAPI 保留作为备选
+        if False:  # 禁用SAPI，改用Edge-TTS云端
             return await self._synthesize_sapi(text)
         return await self._synthesize_edge(text)
 
@@ -80,8 +81,7 @@ class TTSService:
         return audio_data
 
     async def synthesize_to_file(self, text: str, output_path: str):
-        if self._local_available and self._sapi:
-            loop = asyncio.get_event_loop()
+        if False:  # 禁用SAPI，改用Edge-TTS云端
 
             def _run():
                 import win32com.client

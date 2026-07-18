@@ -71,3 +71,31 @@ async def get_emotion_report():
 @router.get("/stats/hot-questions")
 async def get_hot_questions():
     return rag_service.get_hot_questions()
+
+@router.get("/stats/consumption")
+async def get_consumption():
+    from app.services.consumption_service import get_analysis
+    return get_analysis()
+
+# 用户管理
+@router.get("/user/history")
+async def get_user_history(session_id: str = None):
+    from app.services.user_service import get_history
+    return {"history": get_history(session_id=session_id)}
+
+@router.get("/user/feedback-stats")
+async def get_feedback_stats():
+    from app.services.user_service import get_feedback_stats
+    return get_feedback_stats()
+
+class FeedbackRequest(BaseModel):
+    session_id: str = ""
+    message: str = ""
+    rating: str = "good"
+    comment: str = ""
+
+@router.post("/user/feedback")
+async def submit_feedback(req: FeedbackRequest):
+    from app.services.user_service import save_feedback
+    save_feedback(req.session_id, req.message, req.rating, req.comment)
+    return {"status": "ok"}

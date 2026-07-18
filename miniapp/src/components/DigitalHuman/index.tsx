@@ -1,7 +1,7 @@
 import { View } from "@tarojs/components";
 
 interface Props {
-  status: "idle" | "listening" | "speaking" | "happy";
+  status: "idle" | "listening" | "speaking" | "happy" | "sad";
 }
 
 export default function DigitalHuman({ status = "idle" }: Props) {

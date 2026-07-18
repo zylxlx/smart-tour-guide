@@ -180,6 +180,35 @@
   color: #333;
   border-bottom-left-radius: 4px;
 }
+/* ===== 情感标签 ===== */
+.emo-tag {
+  font-size: 28px;
+  margin-right: 8px;
+}
+.emo-tag.emo-pos { }
+.emo-tag.emo-neg { }
+
+/* ===== 反馈按钮 ===== */
+.fb-btns {
+  display: flex;
+  gap: 8px;
+  margin-top: 6px;
+  justify-content: flex-end;
+}
+.fb-btn {
+  font-size: 24px;
+  opacity: 0.5;
+}
+
+/* ===== 响应耗时 ===== */
+.latency {
+  display: block;
+  text-align: right;
+  font-size: 18px;
+  color: #4caf50;
+  margin-top: 4px;
+}
+
 .msg-bubble.thinking {
   color: #b8860b;
   font-size: 24px;
@@ -208,6 +237,19 @@
   flex-shrink: 0;
   transition: all 0.2s;
 }
+.stop-speak-btn {
+  width: 66px;
+  height: 66px;
+  border-radius: 50%;
+  background: #ff4444;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 30px;
+  flex-shrink: 0;
+}
+
 .voice-btn.recording {
   background: #ff4444;
   color: #fff;

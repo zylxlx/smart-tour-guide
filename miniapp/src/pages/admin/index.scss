@@ -134,3 +134,82 @@
   display: block;
   margin-top: 8px;
 }
+
+/* ===== 柱状图 ===== */
+.bar-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+}
+.bar-label {
+  width: 80px;
+  font-size: 22px;
+  color: #666;
+  flex-shrink: 0;
+}
+.bar-track {
+  flex: 1;
+  height: 20px;
+  background: #f0f0f0;
+  border-radius: 10px;
+  overflow: hidden;
+}
+.bar-fill {
+  height: 100%;
+  background: #b8860b;
+  border-radius: 10px;
+  min-width: 4px;
+  transition: width 0.5s ease;
+}
+.bar-fill.green { background: #4caf50; }
+.bar-fill.blue { background: #2196f3; }
+.bar-fill.pink { background: #e91e63; }
+.bar-val {
+  font-size: 20px;
+  color: #999;
+  flex-shrink: 0;
+}
+
+.row-split {
+  display: flex;
+  gap: 20px;
+}
+.half {
+  flex: 1;
+}
+.sub-title {
+  font-size: 24px;
+  font-weight: bold;
+  color: #666;
+  margin-bottom: 12px;
+  display: block;
+}
+
+/* ===== 知识库表单 ===== */
+.kb-form { padding: 8px 0; }
+.kb-row { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+.kb-label { width: 60px; font-size: 24px; color: #666; flex-shrink: 0; }
+.kb-input { flex: 1; border: 1px solid #ddd; border-radius: 8px; padding: 8px 12px; font-size: 24px; }
+.kb-select { border: 1px solid #ddd; border-radius: 8px; padding: 8px 12px; font-size: 24px; }
+.kb-btn { background: #b8860b; color: #fff; padding: 8px 20px; border-radius: 8px; font-size: 24px; }
+.kb-btn.upload { background: #2196f3; }
+.kb-hint { font-size: 20px; color: #bbb; }
+.kb-textarea { width: 100%; border: 1px solid #ddd; border-radius: 8px; padding: 10px; font-size: 22px; min-height: 120px; margin-top: 8px; }
+.kb-item { display: flex; align-items: center; gap: 10px; padding: 12px 0; border-bottom: 1px solid #f0f0f0; }
+.kb-item-title { flex: 1; font-size: 24px; color: #333; }
+.kb-item-cat { font-size: 20px; color: #999; }
+.kb-del { color: #f44336; font-size: 22px; }
+
+/* ===== 反馈统计 ===== */
+.fbk-stats { display: flex; gap: 14px; margin-bottom: 16px; }
+.fbk-card { flex: 1; text-align: center; padding: 16px; border-radius: 12px; background: #f5f5f5; font-size: 22px; color: #666; }
+.fbk-card.good { background: #e8f5e9; }
+.fbk-card.bad { background: #ffebee; }
+.fbk-num { font-size: 40px; font-weight: bold; display: block; margin-bottom: 4px; }
+
+/* ===== 对话历史 ===== */
+.hist-item { padding: 12px 0; border-bottom: 1px solid #f0f0f0; }
+.hist-time { font-size: 20px; color: #bbb; display: block; }
+.hist-user { font-size: 22px; color: #b8860b; display: block; margin-top: 4px; }
+.hist-ai { font-size: 22px; color: #333; display: block; margin-top: 4px; }

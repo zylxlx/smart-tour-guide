@@ -123,6 +123,25 @@
   border-radius: 0 0 10px 10px;
 }
 
+/* ===== 难过动画 ===== */
+.dh-sad .dh-head {
+  animation: sadBow 2s ease-in-out infinite;
+}
+.dh-sad .dh-eye {
+  border-radius: 50% 50% 0 0;
+  height: 4px;
+  width: 8px;
+  background: #3d2b1f;
+  animation: sadBlink 3s ease-in-out infinite;
+}
+.dh-sad .dh-mouth {
+  width: 12px;
+  height: 4px;
+  border-radius: 4px 4px 0 0;
+  background: #c97d6d;
+  transform: rotate(180deg) translateX(-50%);
+}
+
 /* ===== Keyframes ===== */
 @keyframes idleBreathe {
   0%, 100% { transform: scale(1); }
@@ -155,4 +174,14 @@
   30% { transform: translateY(-8px) scale(1.03); }
   50% { transform: translateY(0) scale(1); }
   70% { transform: translateY(-4px) scale(1.01); }
+}
+
+@keyframes sadBow {
+  0%, 100% { transform: translateY(0) rotate(0); }
+  50% { transform: translateY(4px) rotate(2deg); }
+}
+
+@keyframes sadBlink {
+  0%, 90%, 96%, 100% { transform: scaleY(1); }
+  93% { transform: scaleY(0.3); }
 }

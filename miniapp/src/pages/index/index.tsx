@@ -9,6 +9,8 @@ const API_URL = "http://localhost:8000";
 interface Message {
   role: "user" | "assistant";
   text: string;
+  emotion?: string;
+  latency?: number;
 }
 
 const PREFERENCES = ["佛教朝圣", "自然观光", "亲子互动", "禅修体验", "文化深度游"];
@@ -22,28 +24,44 @@ export default function Index() {
   const [sessionId] = useState(() => `session_${Date.now()}`);
   const [scrollTop, setScrollTop] = useState(0);
 
-  // 密码弹窗
   const [showPwdModal, setShowPwdModal] = useState(false);
   const [pwdInput, setPwdInput] = useState("");
   const [pwdError, setPwdError] = useState(false);
 
+  const submitFeedback = (rating: string, msg: string) => {
+    Taro.request({
+      url: `${API_URL}/api/admin/user/feedback`,
+      method: "POST",
+      header: { "Content-Type": "application/json" },
+      data: { session_id: sessionId, message: msg, rating },
+    }).catch(() => {});
+    Taro.showToast({ title: rating === "good" ? "感谢好评 🙏" : "已记录，我们会改进", icon: "none", duration: 1000 });
+  };
+
   const hasMessages = messages.length > 0;
 
-  // 收到回复后滚到底部
+  // 收到回复后延迟滚到底部（等 DOM 渲染完）
   useEffect(() => {
-    if (!loading) {
-      setTimeout(() => setScrollTop(99999 + messages.length), 100);
+    if (!loading && messages.length > 0) {
+      setTimeout(() => setScrollTop(99999 + messages.length), 200);
     }
   }, [loading]);
 
-  // 启动时：语音问候 + 后台预热
+  // loading 变化时也触发一次（确保回复渲染后滚动）
+  useEffect(() => {
+    if (messages.length > 0) {
+      setScrollTop(99999 + messages.length);
+    }
+  }, [messages.length]);
+
   useEffect(() => {
     const timer = setTimeout(() => {
-      setMessages([{ role: "assistant", text: "你好，我是你的导游慧行，阿弥陀佛 🙏" }]);
+      const greeting = "你好，我是你的导游慧行，阿弥陀佛";
+      setMessages([{ role: "assistant", text: greeting + " 🙏" }]);
       setDhStatus("speaking");
-      setTimeout(() => setDhStatus("idle"), 3000);
+      playTTS(greeting);
+      setTimeout(() => setDhStatus("idle"), 4000);
     }, 800);
-    // 后台预热
     Taro.request({
       url: `${API_URL}/api/chat/send`,
       method: "POST",
@@ -53,7 +71,6 @@ export default function Index() {
     return () => clearTimeout(timer);
   }, []);
 
-  // 密码验证
   const handleAdminLogin = () => {
     if (pwdInput === "Lingshan001") {
       setShowPwdModal(false);
@@ -65,9 +82,33 @@ export default function Index() {
     }
   };
 
-  // TTS 语音播报
+  // ===== 音频管理 =====
+  const audioRef = useRef<Taro.InnerAudioContext | null>(null);
+
+  const stopAudio = useCallback(() => {
+    if (audioRef.current) {
+      try { audioRef.current.stop(); } catch {}
+      try { audioRef.current.destroy(); } catch {}
+      audioRef.current = null;
+    }
+    setSpeaking(false);
+  }, []);
+
+  // 清理 TTS 文本：去符号去emoji，保留汉字数字和自然标点
+  const cleanForTTS = (raw: string) => {
+    return raw
+      .replace(/[\u{1F000}-\u{1FFFF}]/gu, "")
+      .replace(/[\u{2600}-\u{27BF}]/gu, "")
+      .replace(/[\u{FE00}-\u{FEFF}]/gu, "")
+      .replace(/[^一-鿿　-〿＀-￯0-9\n]/g, "")
+      .replace(/\n+/g, "，")
+      .replace(/路线路线/g, "路线")
+      .trim();
+  };
+
   const playTTS = useCallback(async (text: string) => {
-    const clean = text.replace(/\n+/g, "。").replace(/路线路线/g, "路线").trim();
+    stopAudio();
+    const clean = cleanForTTS(text);
     if (!clean) return;
     try {
       const res = await Taro.request({
@@ -79,17 +120,20 @@ export default function Index() {
         const data: any = res.data;
         if (data.url) {
           const audio = Taro.createInnerAudioContext();
+          audioRef.current = audio;
           audio.src = `${API_URL}${data.url}`;
-          audio.onEnded(() => audio.destroy());
-          audio.onError(() => audio.destroy());
+          audio.onEnded(() => { audio.destroy(); audioRef.current = null; setSpeaking(false); });
+          audio.onError(() => { audio.destroy(); audioRef.current = null; setSpeaking(false); });
           audio.play();
+          setSpeaking(true);
         }
       }
     } catch {}
-  }, []);
+  }, [stopAudio]);
 
   // ===== 长按录音 =====
   const recorderRef = useRef(Taro.getRecorderManager());
+  const [speaking, setSpeaking] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
 
   const startRecord = useCallback(() => {
@@ -97,11 +141,7 @@ export default function Index() {
     setDhStatus("listening");
     Taro.vibrateShort();
     recorderRef.current.start({
-      duration: 30000,
-      sampleRate: 16000,
-      numberOfChannels: 1,
-      encodeBitRate: 48000,
-      format: "wav",
+      duration: 30000, sampleRate: 16000, numberOfChannels: 1, encodeBitRate: 48000, format: "wav",
     });
   }, []);
 
@@ -119,33 +159,28 @@ export default function Index() {
       Taro.showLoading({ title: "识别中..." });
       try {
         const uploadRes = await Taro.uploadFile({
-          url: `${API_URL}/api/chat/voice`,
-          filePath: res.tempFilePath,
-          name: "file",
+          url: `${API_URL}/api/chat/voice`, filePath: res.tempFilePath, name: "file",
         });
         Taro.hideLoading();
         if (uploadRes.statusCode === 200) {
           const data = JSON.parse(uploadRes.data);
           if (data.text) handleSend(data.text);
         }
-      } catch {
-        Taro.hideLoading();
-      }
+      } catch { Taro.hideLoading(); }
     });
-    rm.onError(() => {
-      setIsRecording(false);
-      setDhStatus("idle");
-    });
+    rm.onError(() => { setIsRecording(false); setDhStatus("idle"); });
   }, []);
 
   // ===== 发送消息 =====
   const handleSend = async (text?: string) => {
     const msg = (text || input).trim();
     if (!msg || loading) return;
+    stopAudio();
     setMessages((prev) => [...prev, { role: "user", text: msg }]);
     setInput("");
     setLoading(true);
     setDhStatus("speaking");
+    const t0 = Date.now();
     try {
       const res = await Taro.request({
         url: `${API_URL}/api/chat/send`,
@@ -156,14 +191,17 @@ export default function Index() {
       if (res.statusCode === 200) {
         const data: any = res.data;
         const reply = data.reply || "阿弥陀佛，小僧一时语塞。";
-        setMessages((prev) => [...prev, { role: "assistant", text: reply }]);
+        const emotion = data.emotion || "中性";
+        const latency = ((Date.now() - t0) / 1000).toFixed(1);
+        setMessages((prev) => [...prev, { role: "assistant", text: reply, emotion, latency: parseFloat(latency) }]);
+        if (emotion.includes("负面")) setDhStatus("sad" as any);
+        else if (emotion.includes("正面")) setDhStatus("happy");
+        else setDhStatus("speaking");
+        setTimeout(() => setDhStatus("idle"), 3000);
         playTTS(reply);
       }
     } catch {
-      setMessages((prev) => [
-        ...prev,
-        { role: "assistant", text: "阿弥陀佛，小僧暂时无法回答，请确认后端服务已启动。" },
-      ]);
+      setMessages((prev) => [...prev, { role: "assistant", text: "阿弥陀佛，小僧暂时无法回答，请确认后端服务已启动。" }]);
     }
     setLoading(false);
     setDhStatus("idle");
@@ -175,6 +213,7 @@ export default function Index() {
     setDhStatus("happy");
     setMessages((prev) => [...prev, { role: "user", text: `我想体验：${pref}` }]);
     setLoading(true);
+    const t0 = Date.now();
     try {
       const res = await Taro.request({
         url: `${API_URL}/api/chat/recommend`,
@@ -189,25 +228,18 @@ export default function Index() {
           if (data.route_name && data.duration && data.path) {
             routeText = `🏯 ${data.route_name}（${data.duration}）\n\n`;
             routeText += `📍 路线：${data.path}\n\n`;
-            if (data.highlights && data.highlights.length > 0) {
+            if (data.highlights && data.highlights.length > 0)
               routeText += `🌟 核心亮点：\n${data.highlights.map((h: string) => `  • ${h}`).join("\n")}\n\n`;
-            }
-            if (data.experiences && data.experiences.length > 0) {
+            if (data.experiences && data.experiences.length > 0)
               routeText += `✨ 特色体验：\n${data.experiences.map((e: string) => `  • ${e}`).join("\n")}`;
-            }
           } else {
             routeText = `为您推荐${pref}路线：\n`;
             const spots = data.spots || data.route || [];
             if (spots.length > 0) routeText += spots.map((s: string, i: number) => `${i + 1}. ${s}`).join("\n");
           }
-          setMessages((prev) => [...prev, { role: "assistant", text: routeText }]);
-          // 语音播报完整推荐（限500字防超时）
-          const speakText = routeText
-            .replace(/[🏯⏱📍🌟✨•]/g, "")
-            .replace(/\*\*/g, "")
-            .replace(/\n+/g, "，")
-            .trim()
-            .substring(0, 500);
+          const latency = parseFloat(((Date.now() - t0) / 1000).toFixed(1));
+          setMessages((prev) => [...prev, { role: "assistant", text: routeText, latency }]);
+          const speakText = routeText.replace(/[🏯⏱📍🌟✨•]/g, "").replace(/\*\*/g, "").replace(/\n+/g, "，").trim().substring(0, 500);
           playTTS(speakText);
         } catch {
           setMessages((prev) => [...prev, { role: "assistant", text: `推荐结果：${JSON.stringify(res.data)}` }]);
@@ -222,30 +254,21 @@ export default function Index() {
 
   return (
     <View className="page">
-      {/* 顶部标题 */}
       <View className="header">
         <Text className="header-title">灵山AI禅意导游</Text>
       </View>
 
-      {/* 偏好标签栏 */}
       <View className="pref-bar">
         {PREFERENCES.map((p) => (
-          <View
-            key={p}
-            className={`pref-tag ${preference === p ? "active" : ""}`}
-            onClick={() => handleRecommend(p)}
-          >
+          <View key={p} className={`pref-tag ${preference === p ? "active" : ""}`} onClick={() => handleRecommend(p)}>
             <Text>{p}</Text>
           </View>
         ))}
       </View>
 
-      {/* 有消息时：数字人独立顶部栏（不被遮挡） */}
       {hasMessages && (
         <View className="dh-bar">
-          <View className="dh-bar-box">
-            <DigitalHuman status={dhStatus} />
-          </View>
+          <View className="dh-bar-box"><DigitalHuman status={dhStatus} /></View>
           <View className="dh-bar-info">
             <Text className="dh-bar-name">慧行 · AI数字人导游</Text>
             <Text className="dh-bar-desc">正在为您服务</Text>
@@ -253,14 +276,10 @@ export default function Index() {
         </View>
       )}
 
-      {/* 对话区 */}
       <View className="chat-area">
-        {/* 无消息时：数字人大图居中 */}
         {!hasMessages && (
           <View className="dh-wrapper center">
-            <View className="dh-box">
-              <DigitalHuman status={dhStatus} />
-            </View>
+            <View className="dh-box"><DigitalHuman status={dhStatus} /></View>
             <Text className="dh-name">慧行 · AI数字人导游</Text>
             <View className="welcome-text">
               <Text className="title">阿弥陀佛，欢迎来到灵山胜境</Text>
@@ -270,84 +289,73 @@ export default function Index() {
           </View>
         )}
 
-        {/* 消息列表 */}
         {hasMessages && (
           <ScrollView className="msg-list" scrollY scrollTop={scrollTop} scrollWithAnimation>
             {messages.map((m, i) => (
               <View key={i} className={`msg-row ${m.role}`}>
                 <View className={`msg-bubble ${m.role}`}>
+                  {m.role === "assistant" && m.emotion && (
+                    <Text className={`emo-tag ${m.emotion.includes("正面") ? "emo-pos" : m.emotion.includes("负面") ? "emo-neg" : ""}`}>
+                      {m.emotion.includes("正面") ? "😊" : m.emotion.includes("负面") ? "😔" : ""}
+                    </Text>
+                  )}
                   <Text>{m.text}</Text>
+                  {m.role === "assistant" && m.latency != null && (
+                    <View className="latency"><Text>{m.latency}s</Text></View>
+                  )}
+                  {m.role === "assistant" && (
+                    <View className="fb-btns">
+                      <Text className="fb-btn" onClick={() => submitFeedback("good", m.text)}>👍</Text>
+                      <Text className="fb-btn" onClick={() => submitFeedback("bad", m.text)}>👎</Text>
+                    </View>
+                  )}
                 </View>
               </View>
             ))}
             {loading && (
               <View className="msg-row assistant">
-                <View className="msg-bubble assistant thinking">
-                  <Text>慧行正在思考...</Text>
-                </View>
+                <View className="msg-bubble assistant thinking"><Text>慧行正在思考...</Text></View>
               </View>
             )}
           </ScrollView>
         )}
       </View>
 
-      {/* 输入栏 */}
       <View className="input-bar">
         <View
           className={`voice-btn ${isRecording ? "recording" : ""}`}
-          onTouchStart={startRecord}
-          onTouchEnd={stopRecord}
-          onTouchCancel={stopRecord}
+          onTouchStart={startRecord} onTouchEnd={stopRecord} onTouchCancel={stopRecord}
         >
           <Text>{isRecording ? "🔴" : "🎤"}</Text>
         </View>
-        <Input
-          className="msg-input"
-          value={input}
-          onInput={(e) => setInput(e.detail.value)}
-          onConfirm={() => handleSend()}
-          placeholder="输入问题，如：灵山大佛有多高？"
-          confirmType="send"
-        />
-        <Button
-          className="send-btn"
-          size="mini"
-          onClick={() => handleSend()}
-          disabled={loading || !input.trim()}
-        >
+        {speaking && (
+          <View className="stop-speak-btn" onClick={stopAudio}>
+            <Text>⏹</Text>
+          </View>
+        )}
+        <Input className="msg-input" value={input} onInput={(e) => setInput(e.detail.value)} onConfirm={() => handleSend()}
+          placeholder="输入问题，如：灵山大佛有多高？" confirmType="send" />
+        <Button className="send-btn" size="mini" onClick={() => handleSend()} disabled={loading || !input.trim()}>
           发送
         </Button>
       </View>
 
-      {/* 密码弹窗 */}
       {showPwdModal && (
         <View className="pwd-overlay" onClick={() => { setShowPwdModal(false); setPwdInput(""); }}>
           <View className="pwd-modal" onClick={(e: any) => e.stopPropagation()}>
             <Text className="pwd-title">运营管理</Text>
             <Text className="pwd-desc">请输入管理密码以继续</Text>
-            <Input
-              className={`pwd-input ${pwdError ? "pwd-err" : ""}`}
-              password
-              value={pwdInput}
-              onInput={(e) => { setPwdInput(e.detail.value); setPwdError(false); }}
-              onConfirm={handleAdminLogin}
-              placeholder="请输入密码"
-              focus
-            />
+            <Input className={`pwd-input ${pwdError ? "pwd-err" : ""}`} password value={pwdInput}
+              onInput={(e) => { setPwdInput(e.detail.value); setPwdError(false); }} onConfirm={handleAdminLogin} placeholder="请输入密码" focus />
             {pwdError && <Text className="pwd-error-text">密码错误，请重试</Text>}
             <View className="pwd-btns">
-              <Button className="pwd-btn cancel" onClick={() => { setShowPwdModal(false); setPwdInput(""); }}>
-                取消
-              </Button>
-              <Button className="pwd-btn confirm" onClick={handleAdminLogin} disabled={!pwdInput.trim()}>
-                确认
-              </Button>
+              <Button className="pwd-btn cancel" onClick={() => { setShowPwdModal(false); setPwdInput(""); }}>取消</Button>
+              <Button className="pwd-btn confirm" onClick={handleAdminLogin} disabled={!pwdInput.trim()}>确认</Button>
             </View>
           </View>
         </View>
       )}
 
-      {/* 右上角齿轮入口 */}
       <View className="gear-btn" onClick={() => { setShowPwdModal(true); setPwdInput(""); setPwdError(false); }}>
         <Text>⚙</Text>
       </View>

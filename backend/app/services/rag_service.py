@@ -96,18 +96,37 @@ PREFERENCE_TO_ROUTE = {
 class RAGService:
     def __init__(self):
         self.index_path = settings.faiss_index_path
-        self.embeddings = None  # 延迟加载
+        self.doc_path = os.path.join(os.path.dirname(self.index_path), "documents.json")
+        self.embeddings = None
         self.vectorstore: Optional[object] = None
         self.text_splitter = RecursiveCharacterTextSplitter(
             chunk_size=500, chunk_overlap=50,
             separators=["\n\n", "\n", "。", "！", "？", "；", "，", " ", ""]
         )
-        self._documents: List[Dict] = []
+        self._documents: List[Dict] = self._load_documents()
         self._usage_stats = {"total_chats": 0, "emotions": {"正面": 0, "中性": 0, "负面": 0}}
         self._load_or_create_index()
 
+    def _load_documents(self) -> List[Dict]:
+        import json
+        if os.path.exists(self.doc_path):
+            try:
+                with open(self.doc_path, "r", encoding="utf-8") as f:
+                    return json.load(f)
+            except: pass
+        return []
+
+    def _save_documents(self):
+        import json
+        os.makedirs(os.path.dirname(self.doc_path), exist_ok=True)
+        with open(self.doc_path, "w", encoding="utf-8") as f:
+            json.dump(self._documents, f, ensure_ascii=False, indent=2)
+
     def _ensure_embeddings(self):
         if self.embeddings is None:
+            # 使用国内镜像下载模型，避免 SSL 证书问题
+            os.environ["HF_ENDPOINT"] = "https://hf-mirror.com"
+            os.environ["CURL_CA_BUNDLE"] = ""
             from langchain_community.embeddings import HuggingFaceEmbeddings
             self.embeddings = HuggingFaceEmbeddings(
                 model_name=settings.embedding_model,
@@ -141,6 +160,7 @@ class RAGService:
         os.makedirs(os.path.dirname(self.index_path), exist_ok=True)
         self.vectorstore.save_local(self.index_path)
         self._documents.append({"id": doc_id, "title": title, "content": content, "category": category})
+        self._save_documents()
         return doc_id
 
     def search(self, query: str, k: int = 3) -> str:
@@ -220,11 +240,13 @@ class RAGService:
                 if title: doc["title"] = title
                 if content: doc["content"] = content
                 if category: doc["category"] = category
+                self._save_documents()
                 return True
         return False
 
     def delete_document(self, doc_id: str):
         self._documents = [d for d in self._documents if d["id"] != doc_id]
+        self._save_documents()
         self._rebuild_index()
 
     def _rebuild_index(self):
