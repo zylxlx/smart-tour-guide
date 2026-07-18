@@ -146,7 +146,7 @@ export default function Index() {
     setSpeaking(true);
   }, [stopAudio]);
 
-  // ===== 长按录音 =====
+  // ===== 点击录音 =====
   const recorderRef = useRef(Taro.getRecorderManager());
   const [isRecording, setIsRecording] = useState(false);
   const isRecordingRef = useRef(false);
@@ -364,7 +364,7 @@ ${data.path}`;
       <View className="chat-area">
         {!hasMessages ? (
           <View className="welcome-tip-area">
-            <Text className="tip">输入文字或长按语音提问</Text>
+            <Text className="tip">输入文字或点击🎤语音提问</Text>
           </View>
         ) : (
           <ScrollView className="msg-list" scrollY enhanced show-scrollbar={false} scroll-top={msgScroll} scroll-with-animation>

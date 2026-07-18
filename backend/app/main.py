@@ -24,6 +24,12 @@ app.mount("/static/tts", StaticFiles(directory=tts_cache_dir), name="tts_static"
 app.include_router(chat.router, prefix="/api/chat", tags=["chat"])
 app.include_router(admin.router, prefix="/api/admin", tags=["admin"])
 
+@app.on_event("startup")
+async def startup_event():
+    """预加载语音识别模型"""
+    import threading
+    threading.Thread(target=lambda: chat.get_asr_model(), daemon=True).start()
+
 @app.get("/")
 def root():
     return {"message": "Smart Tour Guide API is running"}

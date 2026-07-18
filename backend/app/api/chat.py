@@ -115,19 +115,24 @@ async def recommend(req: RecommendRequest):
     return result
 
 _asr_model = None
+_asr_loading = False
 
-def _get_asr_model():
-    global _asr_model
-    if _asr_model is None:
-        from funasr import AutoModel
-        _asr_model = AutoModel(
-            model="paraformer-zh",
-            vad_model="fsmn-vad",
-            punc_model="ct-punc",
-            spk_model=None,
-            device="cpu",
-            disable_pbar=True,
-        )
+def get_asr_model():
+    global _asr_model, _asr_loading
+    if _asr_model is None and not _asr_loading:
+        _asr_loading = True
+        try:
+            from funasr import AutoModel
+            _asr_model = AutoModel(
+                model="paraformer-zh",
+                vad_model="fsmn-vad",
+                punc_model="ct-punc",
+                spk_model=None,
+                device="cpu",
+                disable_pbar=True,
+            )
+        finally:
+            _asr_loading = False
     return _asr_model
 
 def _correct_spots(text: str) -> str:
@@ -183,7 +188,7 @@ def _correct_spots(text: str) -> str:
 @router.post("/voice")
 async def voice_to_text(file: UploadFile = File(...)):
     """语音文件上传 → whisper 转文字 + 景点名纠错"""
-    model = _get_asr_model()
+    model = get_asr_model()
     suffix = os.path.splitext(file.filename or "audio.mp3")[1] or ".mp3"
     with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
         content = await file.read()
