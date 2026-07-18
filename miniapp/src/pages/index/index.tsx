@@ -40,21 +40,17 @@ export default function Index() {
 
   function playTourSpot(idx, items) {
     if (idx >= items.length) {
-      setDhStatus("idle");
-      setTimeout(function() { setTourMode("idle"); setDhStatus("idle"); }, 3000);
       return;
     }
     setTourIndex(idx);
     var item = items[idx];
     var nextIdx = idx + 1;
     if (item && item.tts_url) {
-      setDhStatus("speaking");
       var a = Taro.createInnerAudioContext();
       audioRef.current = a;
       a.src = API_URL + item.tts_url;
       a.onEnded(function() {
         a.destroy(); audioRef.current = null; setSpeaking(false);
-        setDhStatus("idle");
         setTimeout(function() { playTourSpot(nextIdx, items); }, 400);
       });
       a.onError(function() { a.destroy(); audioRef.current = null; setSpeaking(false); });
@@ -91,7 +87,6 @@ export default function Index() {
 
   function pauseTour() {
     if (tourMode !== "playing") return;
-    _tourPlaying = false; stopAudio(); setTourMode("paused"); setDhStatus("idle");
   }
 
   function resumeTour() {
@@ -99,12 +94,10 @@ export default function Index() {
     setTourMode("playing");
     var item = tourItems[tourIndex];
     if (item && item.tts_url) {
-      setDhStatus("speaking");
       var a = Taro.createInnerAudioContext(); audioRef.current = a;
       a.src = API_URL + item.tts_url;
       a.onEnded(function() {
         a.destroy(); audioRef.current = null; setSpeaking(false);
-        setDhStatus("idle"); setTourMode("paused");
       });
       a.onError(function() { a.destroy(); audioRef.current = null; setSpeaking(false); });
       a.play(); setSpeaking(true);
@@ -116,18 +109,14 @@ export default function Index() {
     var nextIdx = tourIndex + 1;
     var items = tourItems;
     if (nextIdx >= items.length) {
-      setDhStatus("idle"); setTourMode("idle"); _tourPlaying = false;
-      setTimeout(function() { setDhStatus("idle"); }, 3000); return;
     }
     setTourIndex(nextIdx); setTourMode("playing");
-    setDhStatus("speaking");
     var item = items[nextIdx];
     if (item && item.tts_url) {
       var a = Taro.createInnerAudioContext(); audioRef.current = a;
       a.src = API_URL + item.tts_url;
       a.onEnded(function() {
         a.destroy(); audioRef.current = null; setSpeaking(false);
-        setDhStatus("idle"); setTourMode("paused");
       });
       a.onError(function() { a.destroy(); audioRef.current = null; setSpeaking(false); });
       a.play(); setSpeaking(true);
@@ -136,7 +125,6 @@ export default function Index() {
 
   function endTour() {
     stopAudio(); _tourPlaying = false;
-    setTourMode("idle"); setTourItems([]); setTourIndex(0); setDhStatus("idle");
     setMessages(function(prev) { return prev.concat([{ role: "assistant", text: "伴随讲解已结束，欢迎随时提问 🙏" }]); });
     doScroll();
   }
@@ -165,16 +153,15 @@ export default function Index() {
     Taro.showToast({ title: rating === "good" ? "感谢好评 🙏" : "已记录，我们会改进", icon: "none", duration: 1000 });
   };
 
-  // TTS 播完/停止后恢复 idle
+  // dhStatus 严格跟随 speaking 状态
   useEffect(() => {
-    if (!speaking && dhStatus === "speaking") setDhStatus("idle");
-  }, [speaking, dhStatus]);
+    setDhStatus(speaking ? "speaking" : "idle");
+  }, [speaking]);
 
   // 进入后：只播语音问候，不输出文字
   useEffect(() => {
     if (!entered) return;
     const t = setTimeout(() => {
-      setDhStatus("speaking");
       playTTS("你好，我是你的导游慧行");
     }, 600);
     Taro.request({
@@ -269,7 +256,6 @@ export default function Index() {
     if (!isRecordingRef.current) return;
     isRecordingRef.current = false;
     setIsRecording(false);
-    setDhStatus("idle");
     try { recorderRef.current.stop(); } catch {}
   }, []);
 
@@ -283,7 +269,6 @@ export default function Index() {
     Taro.authorize({ scope: "scope.record" }).then(() => {
       isRecordingRef.current = true;
       setIsRecording(true);
-      setDhStatus("idle");
       recorderRef.current.start({
         duration: 10000, sampleRate: 16000, numberOfChannels: 1,
         encodeBitRate: 48000, format: "wav",
@@ -300,7 +285,6 @@ export default function Index() {
       if (stopTimer.current) { clearTimeout(stopTimer.current); stopTimer.current = null; }
       isRecordingRef.current = false;
       setIsRecording(false);
-      setDhStatus("idle");
       if (!res.tempFilePath) return;
       Taro.showLoading({ title: "识别中..." });
       try {
@@ -322,7 +306,6 @@ export default function Index() {
       if (stopTimer.current) { clearTimeout(stopTimer.current); stopTimer.current = null; }
       isRecordingRef.current = false;
       setIsRecording(false);
-      setDhStatus("idle");
     });
   }, []);
 
@@ -350,13 +333,10 @@ export default function Index() {
         const latency = ((Date.now() - t0) / 1000).toFixed(1);
         setMessages((prev) => [...prev, { role: "assistant", text: reply, emotion, latency: parseFloat(latency) }]);
         doScroll();
-        if (data.tts_url) { setDhStatus("speaking"); playTTSFromUrl(data.tts_url); }
-        else { setDhStatus("idle"); }
       }
     } catch {
       setMessages((prev) => [...prev, { role: "assistant", text: "慧行暂时无法回答，请确认后端服务已启动。" }]);
       doScroll();
-      setDhStatus("idle");
     }
     setLoading(false);
   };
@@ -365,7 +345,6 @@ export default function Index() {
   // ===== 推荐 =====
   const handleRecommend = async (pref: string) => {
     setPreference(pref);
-    setDhStatus("idle");
     setMessages((prev) => [...prev, { role: "user", text: `我想体验：${pref}` }]);
     setLoading(true);
     doScroll();
@@ -408,7 +387,6 @@ ${data.path}`;
       doScroll();
     }
     setLoading(false);
-    setTimeout(() => setDhStatus("idle"), 2000);
   };
 
   // ===== 欢迎页 =====
