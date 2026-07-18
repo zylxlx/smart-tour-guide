@@ -53,25 +53,24 @@ export default function Index() {
       a.src = API_URL + item.tts_url;
       a.onEnded(function() {
         a.destroy(); audioRef.current = null; setSpeaking(false);
-        if (_tourPlaying) { setDhStatus("idle"); setTimeout(function() { playTourSpot(tourIndex + 1, tourItems); }, 500); }
+        setDhStatus("idle"); setTourMode("paused");
       });
       a.onError(function() { a.destroy(); audioRef.current = null; setSpeaking(false); });
       a.play(); setSpeaking(true);
     } else {
-      setTimeout(function() { playTourSpot(idx + 1, items); }, 400);
+      setDhStatus("idle"); setTourMode("paused");
     }
   }
 
   var _tourPlaying = false;
-  async function startTour(pref) {
+  function startTour(pref) {
     Taro.showLoading({ title: "生成讲解中..." });
-    try {
-      var r = await Taro.request({
-        url: API_URL + "/api/chat/tour/start",
-        method: "POST",
-        header: { "Content-Type": "application/json" },
-        data: { preference: pref },
-      });
+    Taro.request({
+      url: API_URL + "/api/chat/tour/start",
+      method: "POST",
+      header: { "Content-Type": "application/json" },
+      data: { preference: pref },
+    }).then(function(r) {
       Taro.hideLoading();
       if (r.statusCode === 200) {
         var d = r.data;
@@ -83,7 +82,9 @@ export default function Index() {
         doScroll();
         setTimeout(function() { playTourSpot(0, items); }, 500);
       }
-    } catch (e) { Taro.hideLoading(); Taro.showToast({ title: "讲解生成失败", icon: "none" }); }
+    }).catch(function(e) {
+      Taro.hideLoading(); Taro.showToast({ title: "讲解生成失败", icon: "none" });
+    });
   }
 
   function pauseTour() {
@@ -93,7 +94,7 @@ export default function Index() {
 
   function resumeTour() {
     if (tourMode !== "paused") return;
-    _tourPlaying = true; setTourMode("playing");
+    setTourMode("playing");
     var item = tourItems[tourIndex];
     if (item && item.tts_url) {
       setDhStatus("speaking");
@@ -101,7 +102,7 @@ export default function Index() {
       a.src = API_URL + item.tts_url;
       a.onEnded(function() {
         a.destroy(); audioRef.current = null; setSpeaking(false);
-        if (_tourPlaying) { setDhStatus("idle"); setTimeout(function() { playTourSpot(tourIndex + 1, tourItems); }, 500); }
+        setDhStatus("idle"); setTourMode("paused");
       });
       a.onError(function() { a.destroy(); audioRef.current = null; setSpeaking(false); });
       a.play(); setSpeaking(true);
@@ -117,7 +118,18 @@ export default function Index() {
       setTimeout(function() { setDhStatus("idle"); }, 3000); return;
     }
     setTourIndex(nextIdx); setTourMode("playing");
-    setTimeout(function() { playTourSpot(nextIdx, items); }, 300);
+    setDhStatus("speaking");
+    var item = items[nextIdx];
+    if (item && item.tts_url) {
+      var a = Taro.createInnerAudioContext(); audioRef.current = a;
+      a.src = API_URL + item.tts_url;
+      a.onEnded(function() {
+        a.destroy(); audioRef.current = null; setSpeaking(false);
+        setDhStatus("idle"); setTourMode("paused");
+      });
+      a.onError(function() { a.destroy(); audioRef.current = null; setSpeaking(false); });
+      a.play(); setSpeaking(true);
+    }
   }
 
   function endTour() {
@@ -471,7 +483,7 @@ ${data.path}`;
             ) : (
               <View className="tour-btn resume" onClick={resumeTour}><Text>▶ 继续</Text></View>
             )}
-            <View className="tour-btn skip" onClick={skipTour}><Text>⏭ 跳过</Text></View>
+            <View className="tour-btn skip" onClick={skipTour}><Text>⏭ 下一站</Text></View>
             <View className="tour-btn end" onClick={endTour}><Text>⏹ 结束</Text></View>
           </View>
         </View>
