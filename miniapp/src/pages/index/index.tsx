@@ -46,6 +46,7 @@ export default function Index() {
     }
     setTourIndex(idx);
     var item = items[idx];
+    var nextIdx = idx + 1;
     if (item && item.tts_url) {
       setDhStatus("speaking");
       var a = Taro.createInnerAudioContext();
@@ -54,12 +55,12 @@ export default function Index() {
       a.onEnded(function() {
         a.destroy(); audioRef.current = null; setSpeaking(false);
         setDhStatus("idle");
-        setTimeout(function() { playTourSpot(tourIndex + 1, tourItems); }, 400);
+        setTimeout(function() { playTourSpot(nextIdx, items); }, 400);
       });
       a.onError(function() { a.destroy(); audioRef.current = null; setSpeaking(false); });
       a.play(); setSpeaking(true);
     } else {
-      setTimeout(function() { playTourSpot(idx + 1, items); }, 300);
+      setTimeout(function() { playTourSpot(nextIdx, items); }, 300);
     }
   }
 
