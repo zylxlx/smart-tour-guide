@@ -174,7 +174,7 @@ export default function Index() {
   useEffect(() => {
     if (!entered) return;
     const t = setTimeout(() => {
-      setDhStatus("idle");
+      setDhStatus("speaking");
       playTTS("你好，我是你的导游慧行");
     }, 600);
     Taro.request({
@@ -334,7 +334,6 @@ export default function Index() {
     setMessages((prev) => [...prev, { role: "user", text: msg }]);
     setInput("");
     setLoading(true);
-    setDhStatus("speaking");
     doScroll();
     const t0 = Date.now();
     try {
@@ -351,9 +350,8 @@ export default function Index() {
         const latency = ((Date.now() - t0) / 1000).toFixed(1);
         setMessages((prev) => [...prev, { role: "assistant", text: reply, emotion, latency: parseFloat(latency) }]);
         doScroll();
-        setDhStatus("speaking");
-        if (data.tts_url) { playTTSFromUrl(data.tts_url); }
-        else { setTimeout(() => setDhStatus("idle"), 1000); }
+        if (data.tts_url) { setDhStatus("speaking"); playTTSFromUrl(data.tts_url); }
+        else { setDhStatus("idle"); }
       }
     } catch {
       setMessages((prev) => [...prev, { role: "assistant", text: "慧行暂时无法回答，请确认后端服务已启动。" }]);
