@@ -17,17 +17,29 @@ interface Message {
 const PREFERENCES = ["佛教朝圣", "自然观光", "亲子互动", "禅修体验", "文化深度游"];
 
 export default function Index() {
+  // ===== 欢迎页 =====
+  const [entered, setEntered] = useState(false);
+
+  const [speaking, setSpeaking] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [dhStatus, setDhStatus] = useState<"idle" | "listening" | "speaking" | "happy">("idle");
   const [preference, setPreference] = useState("");
   const [sessionId] = useState(() => `session_${Date.now()}`);
-  const [scrollTop, setScrollTop] = useState(0);
 
   const [showPwdModal, setShowPwdModal] = useState(false);
   const [pwdInput, setPwdInput] = useState("");
   const [pwdError, setPwdError] = useState(false);
+
+  const hasMessages = messages.length > 0;
+
+  // ===== 滚动控制 =====
+  const [scrollTopVal, setScrollTopVal] = useState(99999);
+  const doScroll = () => {
+    setScrollTopVal(99999 + messages.length);
+    setTimeout(() => setScrollTopVal(99999 + messages.length + 1000), 300);
+  };
 
   const submitFeedback = (rating: string, msg: string) => {
     Taro.request({
@@ -39,26 +51,14 @@ export default function Index() {
     Taro.showToast({ title: rating === "good" ? "感谢好评 🙏" : "已记录，我们会改进", icon: "none", duration: 1000 });
   };
 
-  const hasMessages = messages.length > 0;
-
-  // 任何新消息都立刻滚到底
+  // 进入后：只播语音问候，不输出文字
   useEffect(() => {
-    if (messages.length > 0) {
-      setScrollTop(999999);
-      setTimeout(() => setScrollTop(999999), 100);
-      setTimeout(() => setScrollTop(999999), 400);
-      setTimeout(() => setScrollTop(999999), 800);
-    }
-  }, [messages]);
-
-  useEffect(() => {
+    if (!entered) return;
     const timer = setTimeout(() => {
-      const greeting = "你好，我是你的导游慧行，阿弥陀佛";
-      setMessages([{ role: "assistant", text: greeting + " 🙏" }]);
       setDhStatus("speaking");
-      playTTS(greeting);
+      playTTS("你好，我是你的导游慧行");
       setTimeout(() => setDhStatus("idle"), 4000);
-    }, 800);
+    }, 600);
     Taro.request({
       url: `${API_URL}/api/chat/send`,
       method: "POST",
@@ -66,7 +66,7 @@ export default function Index() {
       data: { message: "你好", session_id: sessionId },
     }).catch(() => {});
     return () => clearTimeout(timer);
-  }, []);
+  }, [entered]);
 
   const handleAdminLogin = () => {
     if (pwdInput === "Lingshan001") {
@@ -91,7 +91,6 @@ export default function Index() {
     setSpeaking(false);
   }, []);
 
-  // 清理 TTS 文本：去符号去emoji，保留汉字数字和自然标点
   const cleanForTTS = (raw: string) => {
     return raw
       .replace(/[\u{1F000}-\u{1FFFF}]/gu, "")
@@ -128,7 +127,6 @@ export default function Index() {
     } catch {}
   }, [stopAudio]);
 
-  // Play TTS directly from a backend-provided URL (no second HTTP request)
   const playTTSFromUrl = useCallback((relativeUrl: string) => {
     stopAudio();
     if (!relativeUrl) return;
@@ -141,7 +139,7 @@ export default function Index() {
     setSpeaking(true);
   }, [stopAudio]);
 
-  // ===== 长按录音：按住说话，松手停止，最长10秒自动结束 =====
+  // ===== 长按录音 =====
   const recorderRef = useRef(Taro.getRecorderManager());
   const [isRecording, setIsRecording] = useState(false);
   const isRecordingRef = useRef(false);
@@ -157,18 +155,25 @@ export default function Index() {
     try { recorderRef.current.stop(); } catch {}
   }, []);
 
-  const startRecord = useCallback(() => {
-    if (isRecordingRef.current) return;
-    isRecordingRef.current = true;
-    setIsRecording(true);
-    setDhStatus("listening");
-    Taro.vibrateShort();
-    recorderRef.current.start({
-      duration: 10000, sampleRate: 16000, numberOfChannels: 1,
-      encodeBitRate: 48000, format: "wav",
+  // 点击开始/再点停止
+  const toggleRecord = useCallback(() => {
+    if (isRecordingRef.current) {
+      stopRecord();
+      return;
+    }
+    // 先申请录音权限
+    Taro.authorize({ scope: "scope.record" }).then(() => {
+      isRecordingRef.current = true;
+      setIsRecording(true);
+      setDhStatus("listening");
+      recorderRef.current.start({
+        duration: 10000, sampleRate: 16000, numberOfChannels: 1,
+        encodeBitRate: 48000, format: "wav",
+      });
+      stopTimer.current = setTimeout(() => { stopRecord(); }, 10500);
+    }).catch(() => {
+      Taro.showToast({ title: "请授权录音权限", icon: "none" });
     });
-    // 最长10秒自动停止
-    stopTimer.current = setTimeout(() => { stopRecord(); }, 10500);
   }, [stopRecord]);
 
   useEffect(() => {
@@ -212,6 +217,7 @@ export default function Index() {
     setInput("");
     setLoading(true);
     setDhStatus("speaking");
+    doScroll();
     const t0 = Date.now();
     try {
       const res = await Taro.request({
@@ -226,17 +232,16 @@ export default function Index() {
         const emotion = data.emotion || "中性";
         const latency = ((Date.now() - t0) / 1000).toFixed(1);
         setMessages((prev) => [...prev, { role: "assistant", text: reply, emotion, latency: parseFloat(latency) }]);
+        doScroll();
         if (emotion.includes("负面")) setDhStatus("sad" as any);
         else if (emotion.includes("正面")) setDhStatus("happy");
         else setDhStatus("speaking");
         setTimeout(() => setDhStatus("idle"), 3000);
-        // Use tts_url from backend — no second HTTP request needed
-        if (data.tts_url) {
-          playTTSFromUrl(data.tts_url);
-        }
+        if (data.tts_url) playTTSFromUrl(data.tts_url);
       }
     } catch {
       setMessages((prev) => [...prev, { role: "assistant", text: "阿弥陀佛，小僧暂时无法回答，请确认后端服务已启动。" }]);
+      doScroll();
     }
     setLoading(false);
     setDhStatus("idle");
@@ -249,6 +254,7 @@ export default function Index() {
     setDhStatus("happy");
     setMessages((prev) => [...prev, { role: "user", text: `我想体验：${pref}` }]);
     setLoading(true);
+    doScroll();
     const t0 = Date.now();
     try {
       const res = await Taro.request({
@@ -262,7 +268,6 @@ export default function Index() {
           const data = typeof res.data === "string" ? JSON.parse(res.data) : res.data;
           let routeText = "";
           if (data.route_name && data.duration && data.path) {
-            // SHORTENED: compact single-line format, no emoji decoration, only top-2 highlights
             routeText = `${data.route_name}（${data.duration}）
 ${data.path}`;
             if (data.highlights && data.highlights.length > 0)
@@ -275,21 +280,47 @@ ${data.path}`;
           }
           const latency = parseFloat(((Date.now() - t0) / 1000).toFixed(1));
           setMessages((prev) => [...prev, { role: "assistant", text: routeText, latency }]);
-          // Use tts_url from backend — no second HTTP request needed
-          if (data.tts_url) {
-            playTTSFromUrl(data.tts_url);
-          }
+          doScroll();
+          if (data.tts_url) playTTSFromUrl(data.tts_url);
         } catch {
           setMessages((prev) => [...prev, { role: "assistant", text: `推荐结果：${JSON.stringify(res.data)}` }]);
+          doScroll();
         }
       }
     } catch {
       setMessages((prev) => [...prev, { role: "assistant", text: "路线推荐服务暂不可用。" }]);
+      doScroll();
     }
     setLoading(false);
     setTimeout(() => setDhStatus("idle"), 2000);
   };
 
+  // ===== 欢迎页 =====
+  if (!entered) {
+    return (
+      <View className="page">
+        <View className="header" style={`padding-top:${STATUS_BAR_HEIGHT + 12}px`}>
+          <Text className="header-title">灵山AI禅意导游</Text>
+        </View>
+        <View className="dh-area" style="padding-top:50px">
+          <DigitalHuman status="idle" />
+          <Text className="dh-name">慧行 · AI数字人导游</Text>
+          <View className="welcome-text">
+            <Text className="title">欢迎来到灵山胜境</Text>
+            <Text className="sub">我是您的AI导游「慧行」</Text>
+          </View>
+        </View>
+        <View className="chat-area" style="display:flex;align-items:center;justify-content:center">
+          <Button className="splash-btn" onClick={function(){setEntered(true)}}>开启禅意之旅</Button>
+        </View>
+        <View className="input-bar" style="justify-content:center">
+          <Text className="tip">点击上方按钮开启禅意之旅</Text>
+        </View>
+      </View>
+    );
+  }
+
+  // ===== 主界面 =====
   return (
     <View className="page">
       <View className="header" style={`padding-top:${STATUS_BAR_HEIGHT + 12}px`}>
@@ -307,13 +338,12 @@ ${data.path}`;
         ))}
       </View>
 
-      {/* 数字人区域 — 固定占上方 2/3 */}
       <View className="dh-area">
         <DigitalHuman status={dhStatus} />
         <Text className="dh-name">慧行 · AI数字人导游</Text>
         {!hasMessages ? (
           <View className="welcome-text">
-            <Text className="title">阿弥陀佛，欢迎来到灵山胜境</Text>
+            <Text className="title">欢迎来到灵山胜境</Text>
             <Text className="sub">我是您的AI导游「慧行」</Text>
           </View>
         ) : (
@@ -321,14 +351,13 @@ ${data.path}`;
         )}
       </View>
 
-      {/* 文字区域 — 占下方 1/3，可滚动 */}
       <View className="chat-area">
         {!hasMessages ? (
           <View className="welcome-tip-area">
             <Text className="tip">输入文字或长按语音提问</Text>
           </View>
         ) : (
-          <ScrollView className="msg-list" scrollY scrollTop={scrollTop} scrollWithAnimation>
+          <ScrollView className="msg-list" scrollY scrollTop={scrollTopVal} scrollWithAnimation>
             {messages.map((m, i) => (
               <View key={i} className={`msg-row ${m.role}`}>
                 <View className={`msg-bubble ${m.role}`}>
@@ -355,8 +384,6 @@ ${data.path}`;
                 <View className="msg-bubble assistant thinking"><Text>慧行正在思考...</Text></View>
               </View>
             )}
-            {/* 底部锚点，scroll-into-view 确保滚到最底 */}
-            <View id="msg-bottom" style="height:4px;flex-shrink:0" />
           </ScrollView>
         )}
       </View>
@@ -365,13 +392,11 @@ ${data.path}`;
         <View className="voice-wrap">
           <View
             className={`voice-btn ${isRecording ? "recording" : ""}`}
-            onTouchStart={startRecord}
-            onTouchEnd={stopRecord}
-            onTouchCancel={stopRecord}
+            onClick={toggleRecord}
           >
             <Text>{isRecording ? "🔴" : "🎤"}</Text>
           </View>
-          <Text className="voice-label">长按录音</Text>
+          <Text className="voice-label">{isRecording ? "点击停止" : "点击录音"}</Text>
         </View>
         {speaking && (
           <View className="stop-speak-btn" onClick={stopAudio}>
@@ -400,7 +425,6 @@ ${data.path}`;
           </View>
         </View>
       )}
-
     </View>
   );
 }
