@@ -23,7 +23,7 @@ export default function Index() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
-  const [dhStatus, setDhStatus] = useState<"idle" | "listening" | "speaking" | "happy">("idle");
+  const [dhStatus, setDhStatus] = useState<"idle" | "speaking">("idle");
   const [preference, setPreference] = useState("");
   const [sessionId] = useState(() => `session_${Date.now()}`);
 
@@ -40,7 +40,7 @@ export default function Index() {
 
   function playTourSpot(idx, items) {
     if (idx >= items.length) {
-      setDhStatus("happy");
+      setDhStatus("idle");
       setTimeout(function() { setTourMode("idle"); setDhStatus("idle"); }, 3000);
       return;
     }
@@ -116,7 +116,7 @@ export default function Index() {
     var nextIdx = tourIndex + 1;
     var items = tourItems;
     if (nextIdx >= items.length) {
-      setDhStatus("happy"); setTourMode("idle"); _tourPlaying = false;
+      setDhStatus("idle"); setTourMode("idle"); _tourPlaying = false;
       setTimeout(function() { setDhStatus("idle"); }, 3000); return;
     }
     setTourIndex(nextIdx); setTourMode("playing");
@@ -174,7 +174,7 @@ export default function Index() {
   useEffect(() => {
     if (!entered) return;
     const t = setTimeout(() => {
-      setDhStatus("happy");
+      setDhStatus("idle");
       playTTS("你好，我是你的导游慧行");
     }, 600);
     Taro.request({
@@ -283,7 +283,7 @@ export default function Index() {
     Taro.authorize({ scope: "scope.record" }).then(() => {
       isRecordingRef.current = true;
       setIsRecording(true);
-      setDhStatus("listening");
+      setDhStatus("idle");
       recorderRef.current.start({
         duration: 10000, sampleRate: 16000, numberOfChannels: 1,
         encodeBitRate: 48000, format: "wav",
@@ -367,7 +367,7 @@ export default function Index() {
   // ===== 推荐 =====
   const handleRecommend = async (pref: string) => {
     setPreference(pref);
-    setDhStatus("happy");
+    setDhStatus("idle");
     setMessages((prev) => [...prev, { role: "user", text: `我想体验：${pref}` }]);
     setLoading(true);
     doScroll();
