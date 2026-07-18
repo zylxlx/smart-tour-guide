@@ -53,12 +53,13 @@ export default function Index() {
       a.src = API_URL + item.tts_url;
       a.onEnded(function() {
         a.destroy(); audioRef.current = null; setSpeaking(false);
-        setDhStatus("idle"); setTourMode("paused");
+        setDhStatus("idle");
+        setTimeout(function() { playTourSpot(tourIndex + 1, tourItems); }, 400);
       });
       a.onError(function() { a.destroy(); audioRef.current = null; setSpeaking(false); });
       a.play(); setSpeaking(true);
     } else {
-      setDhStatus("idle"); setTourMode("paused");
+      setTimeout(function() { playTourSpot(idx + 1, items); }, 300);
     }
   }
 
