@@ -125,9 +125,6 @@ def get_asr_model():
             from funasr import AutoModel
             _asr_model = AutoModel(
                 model="paraformer-zh",
-                vad_model="fsmn-vad",
-                punc_model="ct-punc",
-                spk_model=None,
                 device="cpu",
                 disable_pbar=True,
             )
@@ -167,23 +164,8 @@ def _correct_spots(text: str) -> str:
     def _similar(a, b):
         return SequenceMatcher(None, a, b).ratio()
 
-    # 对文本中每个 2-5 字片段进行匹配
-    result = text
-    for spot in sorted(known_spots, key=len, reverse=True):
-        if spot in text:  # 已正确识别，跳过
-            continue
-        spot_len = len(spot)
-        for i in range(len(text) - spot_len + 1):
-            chunk = text[i:i + spot_len]
-            if not re.match(r'^[一-鿿]+$', chunk):
-                continue
-            if chunk in known_spots:  # 已是正确景点名，跳过
-                continue
-            sim = _similar(chunk, spot)
-            if sim > 0.4 and sim < 1.0:
-                result = result.replace(chunk, spot, 1)
-                break
-    return result
+    # 模糊纠错已禁用（太容易误纠正），只保留精确词典
+    return text
 
 @router.post("/voice")
 async def voice_to_text(file: UploadFile = File(...)):
