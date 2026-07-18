@@ -76,7 +76,7 @@ async def chat(req: ChatRequest):
 
     # 生成 TTS（AI 回复用快速语速）
     tts_text = _clean_for_tts(reply)
-    tts_url = await _generate_tts_url(tts_text, "+50%") if tts_text else None
+    tts_url = await _generate_tts_url(tts_text) if tts_text else None
 
     # 保存对话记录（首次自动记录登录）
     from app.services.user_service import save_conversation, save_login
@@ -110,7 +110,7 @@ async def recommend(req: RecommendRequest):
     if not tts_text:
         tts_text = f"为您推荐{req.preference}路线"
 
-    tts_url = await _generate_tts_url(tts_text, "+50%") if tts_text else None
+    tts_url = await _generate_tts_url(tts_text) if tts_text else None
     result["tts_url"] = tts_url
     return result
 

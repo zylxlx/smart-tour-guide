@@ -307,6 +307,9 @@ ${data.path}`;
     return (
       <View className="page">
         <View className="header" style={`padding-top:${STATUS_BAR_HEIGHT + 12}px`}>
+          <View className="gear-btn" onClick={() => { setShowPwdModal(true); setPwdInput(""); setPwdError(false); }}>
+            <Text>⚙</Text>
+          </View>
           <Text className="header-title">灵山AI禅意导游</Text>
         </View>
         <View className="dh-area" style="padding-top:50px">
