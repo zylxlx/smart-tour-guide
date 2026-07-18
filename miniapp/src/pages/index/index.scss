@@ -88,13 +88,13 @@
 
 /* ===== 数字人区域 ===== */
 .dh-area {
-  flex: none;
-  height: 62vh;
+  flex: 2;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   padding: 0 20px;
+  min-height: 0;
 }
 
 .dh-name {

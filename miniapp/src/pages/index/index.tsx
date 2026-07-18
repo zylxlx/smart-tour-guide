@@ -57,13 +57,17 @@ export default function Index() {
     Taro.showToast({ title: rating === "good" ? "感谢好评 🙏" : "已记录，我们会改进", icon: "none", duration: 1000 });
   };
 
+  // TTS 播完/停止后恢复 idle
+  useEffect(() => {
+    if (!speaking && dhStatus === "speaking") setDhStatus("idle");
+  }, [speaking, dhStatus]);
+
   // 进入后：只播语音问候，不输出文字
   useEffect(() => {
     if (!entered) return;
-    const timer = setTimeout(() => {
-      setDhStatus("speaking");
+    const t = setTimeout(() => {
+      setDhStatus("happy");
       playTTS("你好，我是你的导游慧行");
-      setTimeout(() => setDhStatus("idle"), 4000);
     }, 600);
     Taro.request({
       url: `${API_URL}/api/chat/send`,
@@ -71,7 +75,7 @@ export default function Index() {
       header: { "Content-Type": "application/json" },
       data: { message: "你好", session_id: sessionId },
     }).catch(() => {});
-    return () => clearTimeout(timer);
+    return () => clearTimeout(t);
   }, [entered]);
 
   const handleAdminLogin = () => {
@@ -239,18 +243,16 @@ export default function Index() {
         const latency = ((Date.now() - t0) / 1000).toFixed(1);
         setMessages((prev) => [...prev, { role: "assistant", text: reply, emotion, latency: parseFloat(latency) }]);
         doScroll();
-        if (emotion.includes("负面")) setDhStatus("sad" as any);
-        else if (emotion.includes("正面")) setDhStatus("happy");
-        else setDhStatus("speaking");
-        setTimeout(() => setDhStatus("idle"), 3000);
-        if (data.tts_url) playTTSFromUrl(data.tts_url);
+        setDhStatus("speaking");
+        if (data.tts_url) { playTTSFromUrl(data.tts_url); }
+        else { setTimeout(() => setDhStatus("idle"), 1000); }
       }
     } catch {
       setMessages((prev) => [...prev, { role: "assistant", text: "慧行暂时无法回答，请确认后端服务已启动。" }]);
       doScroll();
+      setDhStatus("idle");
     }
     setLoading(false);
-    setDhStatus("idle");
   };
   handleSendRef.current = handleSend;
 
