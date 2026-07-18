@@ -14,7 +14,7 @@ interface Message {
   latency?: number;
 }
 
-const PREFERENCES = ["圣地巡礼", "自然观光", "亲子互动", "禅修体验", "文化深度游"];
+const PREFERENCES = ["佛教朝圣", "自然观光", "亲子互动", "禅修体验", "历史文化"];
 
 export default function Index() {
   // ===== 欢迎页 =====

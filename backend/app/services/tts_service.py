@@ -10,7 +10,7 @@ from app.core.config import settings
 class TTSService:
     def __init__(self):
         self.voice = "zh-CN-XiaoxiaoNeural"
-        self.rate = "+50%"
+        self.rate = "+0%"  # 默认正常语速
         self._local_lock = threading.Lock()
         self._sapi = None
         self._sapi_voice = None
@@ -18,7 +18,6 @@ class TTSService:
         try:
             import win32com.client
             self._sapi = win32com.client.Dispatch("SAPI.SpVoice")
-            # 遍历找中文语音，优先 Huihui
             for v in self._sapi.GetVoices():
                 name = v.GetDescription()
                 if "Huihui" in name:
@@ -32,7 +31,7 @@ class TTSService:
                         break
             if self._sapi_voice:
                 self._sapi.Voice = self._sapi_voice
-            self._sapi.Rate = 4  # SAPI rate: -10~10, 4 = 较快
+            self._sapi.Rate = 4
             self._local_available = True
         except Exception:
             self._local_available = False

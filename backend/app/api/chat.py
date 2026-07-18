@@ -38,15 +38,18 @@ def _clean_for_tts(text: str) -> str:
     return cleaned.strip()
 
 
-async def _generate_tts_url(text: str) -> str:
+async def _generate_tts_url(text: str, speed: str = "+0%") -> str:
     """Generate TTS audio file (cached) and return the static URL path."""
     cache_dir = os.path.join(os.path.dirname(__file__), '..', 'data', 'tts_cache')
     os.makedirs(cache_dir, exist_ok=True)
-    key = hashlib.md5(text.encode()).hexdigest()[:12]
+    key = hashlib.md5((text + speed).encode()).hexdigest()[:12]
     filename = f'{key}.wav'
     filepath = os.path.join(cache_dir, filename)
     if not os.path.exists(filepath):
+        old_rate = tts_service.rate
+        tts_service.rate = speed
         await tts_service.synthesize_to_file(text, filepath)
+        tts_service.rate = old_rate
     return f'/static/tts/{filename}'
 
 
@@ -71,9 +74,9 @@ async def chat(req: ChatRequest):
         )
         emotion = "中性"
 
-    # 生成 TTS（与回复文本同时进行，前端拿到 tts_url 即可直接播放）
+    # 生成 TTS（AI 回复用快速语速）
     tts_text = _clean_for_tts(reply)
-    tts_url = await _generate_tts_url(tts_text) if tts_text else None
+    tts_url = await _generate_tts_url(tts_text, "+50%") if tts_text else None
 
     # 保存对话记录（首次自动记录登录）
     from app.services.user_service import save_conversation, save_login
@@ -107,7 +110,7 @@ async def recommend(req: RecommendRequest):
     if not tts_text:
         tts_text = f"为您推荐{req.preference}路线"
 
-    tts_url = await _generate_tts_url(tts_text) if tts_text else None
+    tts_url = await _generate_tts_url(tts_text, "+50%") if tts_text else None
     result["tts_url"] = tts_url
     return result
 
