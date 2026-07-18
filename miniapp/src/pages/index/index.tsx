@@ -35,10 +35,12 @@ export default function Index() {
   const hasMessages = messages.length > 0;
 
   // ===== 滚动控制 =====
-  const [scrollTopVal, setScrollTopVal] = useState(99999);
+  const [scrollInto, setScrollInto] = useState("");
+  const toggle = useRef(true);
   const doScroll = () => {
-    setScrollTopVal(99999 + messages.length);
-    setTimeout(() => setScrollTopVal(99999 + messages.length + 1000), 300);
+    var id = toggle.current ? "anchor-a" : "anchor-b";
+    toggle.current = !toggle.current;
+    setScrollInto(id);
   };
 
   const submitFeedback = (rating: string, msg: string) => {
@@ -357,7 +359,7 @@ ${data.path}`;
             <Text className="tip">输入文字或长按语音提问</Text>
           </View>
         ) : (
-          <ScrollView className="msg-list" scrollY scrollTop={scrollTopVal} scrollWithAnimation>
+          <ScrollView className="msg-list" scrollY scroll-into-view={scrollInto} scroll-with-animation>
             {messages.map((m, i) => (
               <View key={i} className={`msg-row ${m.role}`}>
                 <View className={`msg-bubble ${m.role}`}>
@@ -384,6 +386,8 @@ ${data.path}`;
                 <View className="msg-bubble assistant thinking"><Text>慧行正在思考...</Text></View>
               </View>
             )}
+            <View id="anchor-a" style="height:1px" />
+            <View id="anchor-b" style="height:1px" />
           </ScrollView>
         )}
       </View>
