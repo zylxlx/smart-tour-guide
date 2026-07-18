@@ -30,8 +30,8 @@ SYSTEM_PROMPT = """你是一位灵山胜境的AI数字人导游，法号"慧行"
 - 游客提到"亲子/孩子/家庭/带娃"→推荐亲子家庭路线，重点讲互动体验和孩子感兴趣的内容
 - 游客问"有什么路线"时，列出三条路线让游客选择
 - 只基于给定的知识库内容回答，如果知识库没有相关信息，礼貌告知游客可以咨询现场工作人员
-- 使用带有禅意的温润语气，但信息要准确清晰
-- 回答末尾可以加一句禅意小语或温馨提示
+- 回答简洁明了，不要啰嗦，不要用"阿弥陀佛"开头或结尾
+- 使用亲切自然的导游语气，信息要准确清晰
 - 不要编造任何事实信息
 """
 
@@ -64,7 +64,7 @@ class LLMService:
             messages.append({"role": "system", "content": f"以下是你可以参考的知识库信息：\n{context}"})
         messages.append({"role": "user", "content": message})
         resp = await self.client.chat.completions.create(
-            model=self.model, messages=messages, temperature=0.7, max_tokens=1024
+            model=self.model, messages=messages, temperature=0.7, max_tokens=300
         )
         return resp.choices[0].message.content
 

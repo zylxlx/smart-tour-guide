@@ -35,23 +35,16 @@ export default function Index() {
   const hasMessages = messages.length > 0;
 
   // ===== 滚动控制 =====
-  const [scrollTopVal, setScrollTopVal] = useState(100000);
-  const scrollTick = useRef(100000);
+  const [msgScroll, setMsgScroll] = useState(0);
   const doScroll = () => {
-    scrollTick.current += 100;
-    const v = scrollTick.current;
-    setScrollTopVal(v);
-    setTimeout(() => setScrollTopVal(v + 50), 250);
-    setTimeout(() => setScrollTopVal(v + 99), 550);
+    setMsgScroll(8888 + messages.length * 100);
+    setTimeout(() => setMsgScroll(9999 + messages.length * 200), 300);
+    setTimeout(() => setMsgScroll(9999 + messages.length * 300), 700);
   };
 
-  // 消息数量变化时自动滚（等 DOM 渲染完）
   useEffect(() => {
     if (messages.length > 0) {
-      setTimeout(() => {
-        scrollTick.current += 100;
-        setScrollTopVal(scrollTick.current);
-      }, 300);
+      setTimeout(() => setMsgScroll(9999 + messages.length * 500), 400);
     }
   }, [messages]);
 
@@ -242,7 +235,7 @@ export default function Index() {
       });
       if (res.statusCode === 200) {
         const data: any = res.data;
-        const reply = data.reply || "阿弥陀佛，小僧一时语塞。";
+        const reply = data.reply || "慧行一时语塞，请稍后再问。";
         const emotion = data.emotion || "中性";
         const latency = ((Date.now() - t0) / 1000).toFixed(1);
         setMessages((prev) => [...prev, { role: "assistant", text: reply, emotion, latency: parseFloat(latency) }]);
@@ -254,7 +247,7 @@ export default function Index() {
         if (data.tts_url) playTTSFromUrl(data.tts_url);
       }
     } catch {
-      setMessages((prev) => [...prev, { role: "assistant", text: "阿弥陀佛，小僧暂时无法回答，请确认后端服务已启动。" }]);
+      setMessages((prev) => [...prev, { role: "assistant", text: "慧行暂时无法回答，请确认后端服务已启动。" }]);
       doScroll();
     }
     setLoading(false);
@@ -371,7 +364,7 @@ ${data.path}`;
             <Text className="tip">输入文字或长按语音提问</Text>
           </View>
         ) : (
-          <ScrollView className="msg-list" scrollY scrollTop={scrollTopVal} scrollWithAnimation>
+          <ScrollView className="msg-list" scrollY enhanced show-scrollbar={false} scroll-top={msgScroll} scroll-with-animation>
             {messages.map((m, i) => (
               <View key={i} className={`msg-row ${m.role}`}>
                 <View className={`msg-bubble ${m.role}`}>

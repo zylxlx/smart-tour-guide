@@ -10,7 +10,7 @@ from app.core.config import settings
 class TTSService:
     def __init__(self):
         self.voice = "zh-CN-XiaoxiaoNeural"
-        self.rate = "+0%"
+        self.rate = "+50%"
         self._local_lock = threading.Lock()
         self._sapi = None
         self._sapi_voice = None
