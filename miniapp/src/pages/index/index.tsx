@@ -5,7 +5,6 @@ import DigitalHuman from "../../components/DigitalHuman";
 import "./index.scss";
 
 const API_URL = "http://192.168.2.72:8001";
-const STATUS_BAR_HEIGHT = Taro.getSystemInfoSync().statusBarHeight || 44;
 
 interface Message {
   role: "user" | "assistant";
@@ -306,7 +305,7 @@ ${data.path}`;
   if (!entered) {
     return (
       <View className="page">
-        <View className="header" style={`padding-top:${STATUS_BAR_HEIGHT + 12}px`}>
+        <View className="header" style="padding-top:56px">
           <View className="gear-btn" onClick={() => { setShowPwdModal(true); setPwdInput(""); setPwdError(false); }}>
             <Text>⚙</Text>
           </View>
@@ -333,7 +332,7 @@ ${data.path}`;
   // ===== 主界面 =====
   return (
     <View className="page">
-      <View className="header" style={`padding-top:${STATUS_BAR_HEIGHT + 12}px`}>
+      <View className="header" style="padding-top:56px">
         <View className="gear-btn" onClick={() => { setShowPwdModal(true); setPwdInput(""); setPwdError(false); }}>
           <Text>⚙</Text>
         </View>
