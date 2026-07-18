@@ -10,3 +10,4 @@ backend/.env
 Thumbs.db
 backend/app/data/
 backend/.venv/
+miniapp/m_live2d/
