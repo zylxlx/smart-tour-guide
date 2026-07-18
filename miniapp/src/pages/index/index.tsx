@@ -309,9 +309,7 @@ ${data.path}`;
 
       {/* 数字人区域 — 固定占上方 2/3 */}
       <View className="dh-area">
-        <View className="dh-box">
-          <DigitalHuman status={dhStatus} />
-        </View>
+        <DigitalHuman status={dhStatus} />
         <Text className="dh-name">慧行 · AI数字人导游</Text>
         {!hasMessages ? (
           <View className="welcome-text">
