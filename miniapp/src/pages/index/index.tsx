@@ -35,13 +35,25 @@ export default function Index() {
   const hasMessages = messages.length > 0;
 
   // ===== 滚动控制 =====
-  const [scrollInto, setScrollInto] = useState("");
-  const toggle = useRef(true);
+  const [scrollTopVal, setScrollTopVal] = useState(100000);
+  const scrollTick = useRef(100000);
   const doScroll = () => {
-    var id = toggle.current ? "anchor-a" : "anchor-b";
-    toggle.current = !toggle.current;
-    setScrollInto(id);
+    scrollTick.current += 100;
+    const v = scrollTick.current;
+    setScrollTopVal(v);
+    setTimeout(() => setScrollTopVal(v + 50), 250);
+    setTimeout(() => setScrollTopVal(v + 99), 550);
   };
+
+  // 消息数量变化时自动滚（等 DOM 渲染完）
+  useEffect(() => {
+    if (messages.length > 0) {
+      setTimeout(() => {
+        scrollTick.current += 100;
+        setScrollTopVal(scrollTick.current);
+      }, 300);
+    }
+  }, [messages]);
 
   const submitFeedback = (rating: string, msg: string) => {
     Taro.request({
@@ -359,7 +371,7 @@ ${data.path}`;
             <Text className="tip">输入文字或长按语音提问</Text>
           </View>
         ) : (
-          <ScrollView className="msg-list" scrollY scroll-into-view={scrollInto} scroll-with-animation>
+          <ScrollView className="msg-list" scrollY scrollTop={scrollTopVal} scrollWithAnimation>
             {messages.map((m, i) => (
               <View key={i} className={`msg-row ${m.role}`}>
                 <View className={`msg-bubble ${m.role}`}>
@@ -386,8 +398,6 @@ ${data.path}`;
                 <View className="msg-bubble assistant thinking"><Text>慧行正在思考...</Text></View>
               </View>
             )}
-            <View id="anchor-a" style="height:1px" />
-            <View id="anchor-b" style="height:1px" />
           </ScrollView>
         )}
       </View>
