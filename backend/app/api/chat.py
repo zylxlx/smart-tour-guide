@@ -126,20 +126,30 @@ async def start_tour(req: TourStartRequest):
     spots = [s.strip() for s in result.get("path", "").split("→") if s.strip()]
     route_name = result.get("route_name", req.preference)
 
-    # 并发生成每个景点的LLM讲解 + TTS
-    async def _spot_item(spot: str, idx: int):
-        try:
-            prompt = f"你是灵山胜境AI导游慧行。请用1-2句话简洁介绍景点「{spot}」，语气亲切自然，适合语音导游讲解。不要用感叹号。"
-            reply = await llm_service.chat(prompt)
-            if not reply or "API密钥" in reply or "暂无法" in reply:
-                reply = f"{spot}是灵山胜境的重要景点，欢迎您参观游览。"
-            tts_text = _clean_for_tts(reply)
-            tts_url = await _generate_tts_url(tts_text) if tts_text else None
-            return {"spot": spot, "text": reply, "tts_url": tts_url, "idx": idx}
-        except:
-            return {"spot": spot, "text": f"欢迎来到{spot}", "tts_url": None, "idx": idx}
+    # 一次 LLM 调用生成所有景点介绍（快 + 每景点有专属描述）
+    spots_str = "\n".join([f"{i+1}. {s}" for i, s in enumerate(spots)])
+    prompt = f"你是灵山胜境AI导游慧行。为以下{len(spots)}个景点各写1句简洁介绍（语气亲切自然，不要感叹号，每句不超过30字）：\n{spots_str}\n\n请严格按顺序输出，每句一行，不要编号，不要多余文字。"
+    reply = await llm_service.chat(prompt)
+    lines = [l.strip() for l in reply.replace("\\n", "\n").split("\n") if l.strip() and len(l.strip()) > 4]
+    # Fallback: if LLM fails, use highlights
+    if not lines or "API密钥" in reply:
+        highlights = result.get("highlights", [])
+        lines = highlights if highlights else [f"{s}是灵山胜境的重要景点，欢迎您参观游览" for s in spots]
 
-    items = await _asyncio.gather(*[_spot_item(s, i) for i, s in enumerate(spots)])
+    # 确保 lines 覆盖所有 spots
+    while len(lines) < len(spots):
+        lines.append(f"欢迎来到{spots[len(lines)]}")
+
+    # 并发生成每景点的 TTS
+    async def _spot_tts(spot: str, text: str, idx: int):
+        try:
+            tts_text = _clean_for_tts(text)
+            tts_url = await _generate_tts_url(tts_text) if tts_text else None
+            return {"spot": spot, "text": text, "tts_url": tts_url, "idx": idx}
+        except:
+            return {"spot": spot, "text": text, "tts_url": None, "idx": idx}
+
+    items = await _asyncio.gather(*[_spot_tts(spots[i], lines[i] if i < len(lines) else f"欢迎来到{spots[i]}", i) for i in range(len(spots))])
     items = sorted([i for i in items if i and i.get("tts_url")], key=lambda x: x["idx"])
     return {"route_name": route_name, "items": items, "total": len(items)}
 
