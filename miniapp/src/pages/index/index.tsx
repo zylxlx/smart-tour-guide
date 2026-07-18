@@ -33,6 +33,115 @@ export default function Index() {
 
   const hasMessages = messages.length > 0;
 
+  // ===== 伴随式讲解 =====
+  const [tourMode, setTourMode] = useState<"idle" | "playing" | "paused">("idle");
+  const [tourItems, setTourItems] = useState<any[]>([]);
+  const [tourIndex, setTourIndex] = useState(0);
+  const [tourRouteName, setTourRouteName] = useState("");
+
+  // 播放当前景点（使用 ref 链式播放）
+  const tourRef = useRef<any>({ items: [], idx: 0, mode: "idle" });
+  const playTourSpot = (idx: number, items: any[]) => {
+    if (idx >= items.length) {
+      setDhStatus("happy");
+      setTimeout(() => { setTourMode("idle"); setDhStatus("idle"); tourRef.current.mode = "idle"; }, 3000);
+      return;
+    }
+    tourRef.current.idx = idx;
+    tourRef.current.items = items;
+    setTourIndex(idx);
+    const item = items[idx];
+    if (item && item.tts_url) {
+      setDhStatus("speaking");
+      const a = Taro.createInnerAudioContext();
+      audioRef.current = a;
+      a.src = `${API_URL}${item.tts_url}`;
+      a.onEnded(() => {
+        a.destroy(); audioRef.current = null; setSpeaking(false);
+        if (tourRef.current.mode === "playing") {
+          setDhStatus("idle");
+          setTimeout(() => playTourSpot(tourRef.current.idx + 1, tourRef.current.items), 500);
+        }
+      });
+      a.onError(() => { a.destroy(); audioRef.current = null; setSpeaking(false); });
+      a.play(); setSpeaking(true);
+    } else {
+      setTimeout(() => playTourSpot(idx + 1, items), 400);
+    }
+  };
+
+  // 开始伴随式讲解
+  const startTour = async (pref: string) => {
+    Taro.showLoading({ title: "生成讲解中..." });
+    try {
+      const r = await Taro.request({
+        url: `${API_URL}/api/chat/tour/start`,
+        method: "POST",
+        header: { "Content-Type": "application/json" },
+        data: { preference: pref },
+      });
+      Taro.hideLoading();
+      if (r.statusCode === 200) {
+        const d: any = r.data;
+        const items = d.items || [];
+        if (items.length === 0) { Taro.showToast({ title: "暂无讲解数据", icon: "none" }); return; }
+        tourRef.current.items = items;
+        tourRef.current.idx = 0;
+        tourRef.current.mode = "playing";
+        setTourItems(items); setTourIndex(0); setTourRouteName(d.route_name || pref); setTourMode("playing");
+        setMessages((prev) => [...prev, { role: "assistant", text: `🎙 开始伴随讲解：${d.route_name || pref}\n共${items.length}站` }]);
+        doScroll();
+        setTimeout(() => playTourSpot(0, items), 500);
+      }
+    } catch { Taro.hideLoading(); Taro.showToast({ title: "讲解生成失败", icon: "none" }); }
+  };
+
+  const pauseTour = () => {
+    if (tourMode !== "playing") return;
+    stopAudio(); setTourMode("paused"); setDhStatus("idle");
+    tourRef.current.mode = "paused";
+  };
+
+  const resumeTour = () => {
+    if (tourMode !== "paused") return;
+    tourRef.current.mode = "playing"; setTourMode("playing");
+    const item = tourItems[tourIndex];
+    if (item && item.tts_url) {
+      setDhStatus("speaking");
+      const a = Taro.createInnerAudioContext(); audioRef.current = a;
+      a.src = `${API_URL}${item.tts_url}`;
+      a.onEnded(() => {
+        a.destroy(); audioRef.current = null; setSpeaking(false);
+        if (tourRef.current.mode === "playing") {
+          setDhStatus("idle");
+          setTimeout(() => playTourSpot(tourRef.current.idx + 1, tourRef.current.items), 500);
+        }
+      });
+      a.onError(() => { a.destroy(); audioRef.current = null; setSpeaking(false); });
+      a.play(); setSpeaking(true);
+    }
+  };
+
+  const skipTour = () => {
+    stopAudio(); tourRef.current.mode = "playing";
+    const nextIdx = tourIndex + 1;
+    const items = tourItems;
+    if (nextIdx >= items.length) {
+      setDhStatus("happy"); setTourMode("idle"); tourRef.current.mode = "idle";
+      setTimeout(() => setDhStatus("idle"), 3000); return;
+    }
+    setTourIndex(nextIdx); tourRef.current.idx = nextIdx;
+    setTourMode("playing");
+    setTimeout(() => playTourSpot(nextIdx, items), 300);
+  };
+
+  const endTour = () => {
+    stopAudio(); tourRef.current.mode = "idle";
+    setTourMode("idle"); setTourItems([]); setTourIndex(0); setDhStatus("idle");
+    setMessages((prev) => [...prev, { role: "assistant", text: "伴随讲解已结束，欢迎随时提问 🙏" }]);
+    doScroll();
+  };
+
   // ===== 滚动控制 =====
   const [msgScroll, setMsgScroll] = useState(0);
   const doScroll = () => {
@@ -289,7 +398,8 @@ ${data.path}`;
           const latency = parseFloat(((Date.now() - t0) / 1000).toFixed(1));
           setMessages((prev) => [...prev, { role: "assistant", text: routeText, latency }]);
           doScroll();
-          if (data.tts_url) playTTSFromUrl(data.tts_url);
+          // 自动启动伴随式讲解
+          setTimeout(() => startTour(pref), 800);
         } catch {
           setMessages((prev) => [...prev, { role: "assistant", text: `推荐结果：${JSON.stringify(res.data)}` }]);
           doScroll();
@@ -361,6 +471,25 @@ ${data.path}`;
           <Text className="dh-status-text">正在为您服务</Text>
         )}
       </View>
+
+      {/* 伴随式讲解控制栏 */}
+      {tourMode !== "idle" && (
+        <View className="tour-bar">
+          <View className="tour-info">
+            <Text className="tour-label">🎙 当前讲解：{tourItems[tourIndex]?.spot || "-"}</Text>
+            <Text className="tour-next">下一站：{tourIndex + 1 < tourItems.length ? tourItems[tourIndex + 1]?.spot : "终点"}</Text>
+          </View>
+          <View className="tour-btns">
+            {tourMode === "playing" ? (
+              <View className="tour-btn pause" onClick={pauseTour}><Text>⏸ 暂停</Text></View>
+            ) : (
+              <View className="tour-btn resume" onClick={resumeTour}><Text>▶ 继续</Text></View>
+            )}
+            <View className="tour-btn skip" onClick={skipTour}><Text>⏭ 跳过</Text></View>
+            <View className="tour-btn end" onClick={endTour}><Text>⏹ 结束</Text></View>
+          </View>
+        </View>
+      )}
 
       <View className="chat-area">
         {!hasMessages ? (

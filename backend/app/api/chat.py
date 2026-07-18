@@ -114,6 +114,36 @@ async def recommend(req: RecommendRequest):
     result["tts_url"] = tts_url
     return result
 
+
+class TourStartRequest(BaseModel):
+    preference: str
+
+@router.post("/tour/start")
+async def start_tour(req: TourStartRequest):
+    """伴随式讲解：根据偏好生成路线每景点的语音讲解"""
+    import asyncio as _asyncio
+    result = rag_service.recommend_spots(req.preference)
+    spots = [s.strip() for s in result.get("path", "").split("→") if s.strip()]
+    route_name = result.get("route_name", req.preference)
+
+    # 并发生成每个景点的LLM讲解 + TTS
+    async def _spot_item(spot: str, idx: int):
+        try:
+            prompt = f"你是灵山胜境AI导游慧行。请用1-2句话简洁介绍景点「{spot}」，语气亲切自然，适合语音导游讲解。不要用感叹号。"
+            reply = await llm_service.chat(prompt)
+            if not reply or "API密钥" in reply or "暂无法" in reply:
+                reply = f"{spot}是灵山胜境的重要景点，欢迎您参观游览。"
+            tts_text = _clean_for_tts(reply)
+            tts_url = await _generate_tts_url(tts_text) if tts_text else None
+            return {"spot": spot, "text": reply, "tts_url": tts_url, "idx": idx}
+        except:
+            return {"spot": spot, "text": f"欢迎来到{spot}", "tts_url": None, "idx": idx}
+
+    items = await _asyncio.gather(*[_spot_item(s, i) for i, s in enumerate(spots)])
+    items = sorted([i for i in items if i and i.get("tts_url")], key=lambda x: x["idx"])
+    return {"route_name": route_name, "items": items, "total": len(items)}
+
+
 _asr_model = None
 _asr_loading = False
 
