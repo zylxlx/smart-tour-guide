@@ -1,13 +1,14 @@
 import { View, Video } from "@tarojs/components";
 
-const happySrc = require("../../assets/dh-happy.mp4");
-const speakSrc = require("../../assets/dh-speak.mp4");
-const listenSrc = require("../../assets/dh-listen.mp4");
+const happySrc = require("../../assets/happy.mp4");
+const speakSrc = require("../../assets/speak.mp4");
+const listenSrc = require("../../assets/listen.mp4");
 
 interface Props {
   status: "idle" | "listening" | "speaking" | "happy" | "sad";
 }
 
+// 严格对应：待机→微笑 说话→speak 倾听→listen
 const videoMap: Record<string, string> = {
   idle: happySrc,
   listening: listenSrc,
@@ -19,8 +20,9 @@ const videoMap: Record<string, string> = {
 export default function DigitalHuman({ status = "idle" }: Props) {
   var src = videoMap[status] || happySrc;
   return (
-    <View className="dh-video-wrap">
+    <View className="dh-video-wrap" key={status}>
       <Video
+        key={status}
         className="dh-vid"
         src={src}
         autoplay

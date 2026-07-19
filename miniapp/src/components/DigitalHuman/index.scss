@@ -1,14 +1,13 @@
-/* ===== 视频数字人容器 ===== */
-.dh-body {
+/* ===== 视频数字人容器 — 竖屏 ===== */
+.dh-video-wrap {
   width: 360px;
-  height: 570px;
+  height: 480px;
   position: relative;
   overflow: hidden;
   background: transparent;
 }
 
-/* ===== 视频全屏撑满 ===== */
-.dh-video {
+.dh-vid {
   width: 100%;
   height: 100%;
 }

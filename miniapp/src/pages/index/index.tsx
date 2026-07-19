@@ -280,6 +280,7 @@ export default function Index() {
     Taro.authorize({ scope: "scope.record" }).then(() => {
       isRecordingRef.current = true;
       setIsRecording(true);
+      setDhStatus("listening");
       recorderRef.current.start({
         duration: 10000, sampleRate: 16000, numberOfChannels: 1,
         encodeBitRate: 48000, format: "wav",
