@@ -51,6 +51,7 @@ export default function Index() {
       a.src = API_URL + item.tts_url;
       a.onEnded(function() {
         a.destroy(); audioRef.current = null; setSpeaking(false);
+        if (_tourEnded) return;
         setTimeout(function() { playTourSpot(nextIdx, items); }, 400);
       });
       a.onError(function() { a.destroy(); audioRef.current = null; setSpeaking(false); });
@@ -60,8 +61,9 @@ export default function Index() {
     }
   }
 
-  var _tourPlaying = false;
+  var _tourPlaying = false, _tourEnded = false;
   function startTour(pref) {
+    _tourEnded = false;
     Taro.showLoading({ title: "生成讲解中..." });
     Taro.request({
       url: API_URL + "/api/chat/tour/start",
@@ -87,6 +89,7 @@ export default function Index() {
 
   function pauseTour() {
     if (tourMode !== "playing") return;
+    _tourEnded = true; stopAudio(); setTourMode("paused");
   }
 
   function resumeTour() {
@@ -124,7 +127,7 @@ export default function Index() {
   }
 
   function endTour() {
-    stopAudio(); _tourPlaying = false;
+    _tourEnded = true; stopAudio(); _tourPlaying = false;
     setTourMode("idle"); setTourItems([]); setTourIndex(0);
     setMessages(function(prev) { return prev.concat([{ role: "assistant", text: "伴随讲解已结束，欢迎随时提问 🙏" }]); });
     doScroll();
