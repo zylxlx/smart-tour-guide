@@ -15,7 +15,7 @@ export default function DigitalHuman({ status = "idle" }: Props) {
   var isSpeak  = status === "speaking";
   return (
     <View className="dh-video-wrap">
-      <Video className="dh-vid-layer" src={happySrc}  autoplay loop muted objectFit="contain"
+      <Video className="dh-vid-layer" src={happySrc}  autoplay loop muted objectFit="contain" show-center-play-btn={false}
         showFullscreenBtn={false} showPlayBtn={false} showCenterPlayBtn={false}
         enableProgressGesture={false} controls={false}
         style={`position:absolute;top:0;left:0;width:100%;height:100%;opacity:${isIdle ? 1 : 0}`} />
