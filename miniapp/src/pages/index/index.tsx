@@ -89,7 +89,9 @@ export default function Index() {
 
   function pauseTour() {
     if (tourMode !== "playing") return;
-    _tourEnded = true; stopAudio(); setTourMode("paused");
+    _tourEnded = true;
+    if (audioRef.current) { try { audioRef.current.stop(); } catch(e) {} try { audioRef.current.destroy(); } catch(e) {} audioRef.current = null; }
+    stopAudio(); setTourMode("paused");
   }
 
   function resumeTour() {
@@ -134,7 +136,13 @@ export default function Index() {
   }
 
   function endTour() {
-    _tourEnded = true; stopAudio(); _tourPlaying = false;
+    _tourEnded = true;
+    if (audioRef.current) {
+      try { audioRef.current.stop(); } catch(e) {}
+      try { audioRef.current.destroy(); } catch(e) {}
+      audioRef.current = null;
+    }
+    stopAudio(); _tourPlaying = false; setSpeaking(false);
     setTourMode("idle"); setTourItems([]); setTourIndex(0);
     setMessages(function(prev) { return prev.concat([{ role: "assistant", text: "伴随讲解已结束，欢迎随时提问 🙏" }]); });
     doScroll();
