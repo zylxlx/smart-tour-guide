@@ -23,7 +23,7 @@ export default function Index() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
-  const [dhStatus, setDhStatus] = useState<"idle" | "speaking">("idle");
+  const [dhStatus, setDhStatus] = useState<"idle" | "speaking" | "listening">("idle");
   const [preference, setPreference] = useState("");
   const [sessionId] = useState(() => `session_${Date.now()}`);
 

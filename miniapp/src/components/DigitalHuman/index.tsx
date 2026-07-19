@@ -1,28 +1,27 @@
 import { View, Video } from "@tarojs/components";
 
-const idleSrc = require("../../assets/idle.mp4");
-const listenSrc = require("../../assets/listen.mp4");
-const speakSrc = require("../../assets/speak.mp4");
-const happySrc = require("../../assets/happy.mp4");
+const happySrc = require("../../assets/dh-happy.mp4");
+const speakSrc = require("../../assets/dh-speak.mp4");
+const listenSrc = require("../../assets/dh-listen.mp4");
 
 interface Props {
   status: "idle" | "listening" | "speaking" | "happy" | "sad";
 }
 
 const videoMap: Record<string, string> = {
-  idle: idleSrc,
+  idle: happySrc,
   listening: listenSrc,
   speaking: speakSrc,
   happy: happySrc,
-  sad: idleSrc,   // 难过复用待机
+  sad: happySrc,
 };
 
 export default function DigitalHuman({ status = "idle" }: Props) {
-  const src = videoMap[status] || idleSrc;
+  var src = videoMap[status] || happySrc;
   return (
-    <View className="dh-body">
+    <View className="dh-video-wrap">
       <Video
-        className="dh-video"
+        className="dh-vid"
         src={src}
         autoplay
         loop
