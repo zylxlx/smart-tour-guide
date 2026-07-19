@@ -284,7 +284,15 @@ class RAGService:
         self.vectorstore.save_local(self.index_path)
 
     def get_usage_stats(self) -> Dict:
-        return {"total_chats": self._usage_stats["total_chats"], "emotion_distribution": self._usage_stats["emotions"]}
+        # 从持久化文件统计真实数据
+        import json
+        data_dir = os.path.join(os.path.dirname(__file__), "..", "data")
+        chats_file = os.path.join(data_dir, "chat_history.json")
+        total = 0
+        if os.path.exists(chats_file):
+            with open(chats_file, "r", encoding="utf-8") as f:
+                total = len(json.load(f))
+        return {"total_chats": total, "emotion_distribution": self._usage_stats["emotions"]}
 
     def get_emotion_report(self) -> Dict:
         return {"emotions": self._usage_stats["emotions"], "trend": "stable"}

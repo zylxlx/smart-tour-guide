@@ -8,14 +8,18 @@ CACHE_PATH = os.path.join(os.path.dirname(__file__), "..", "data", "consumption_
 
 
 def _load_and_filter():
-    """加载 Excel 并筛选灵山相关数据，缓存为 JSON"""
+    """加载 Excel 并筛选灵山相关数据，缓存为 JSON；无文件时用示例数据"""
     if os.path.exists(CACHE_PATH):
         with open(CACHE_PATH, "r", encoding="utf-8") as f:
             cache = json.load(f)
         return cache["rows"], cache["total"]
 
-    import openpyxl
-    wb = openpyxl.load_workbook(DATA_PATH, read_only=True)
+    if not os.path.exists(DATA_PATH):
+        return _generate_sample_data()
+
+    try:
+        import openpyxl
+        wb = openpyxl.load_workbook(DATA_PATH, read_only=True)
     ws = wb[wb.sheetnames[0]]
     keywords = ["灵山", "拈花"]
     rows = []
@@ -41,6 +45,38 @@ def _load_and_filter():
                 "total": float(row[14]) if row[14] else 0,
             })
 
+    os.makedirs(os.path.dirname(CACHE_PATH), exist_ok=True)
+    with open(CACHE_PATH, "w", encoding="utf-8") as f:
+        json.dump({"rows": rows, "total": len(rows)}, f, ensure_ascii=False)
+    return rows, len(rows)
+
+
+def _generate_sample_data():
+    """生成灵山景区示例消费数据"""
+    import random
+    random.seed(42)
+    spots = ["灵山大佛", "灵山梵宫", "五印坛城", "祥符禅寺", "九龙灌浴", "佛足坛", "大照壁", "菩提大道", "天下第一掌", "百子戏弥勒"]
+    genders = ["男", "女"]
+    types = ["门票", "餐饮", "购物", "交通", "娱乐"]
+    rows = []
+    for _ in range(200):
+        spot = random.choice(spots)
+        rows.append({
+            "id": str(random.randint(10000, 99999)),
+            "name": f"游客{random.randint(1000,9999)}",
+            "age": random.randint(18, 70),
+            "gender": random.choice(genders),
+            "spot": spot,
+            "type": random.choice(types),
+            "date": f"2026-0{random.randint(1,6):01d}-{random.randint(1,28):02d}",
+            "stay": round(random.uniform(2, 8), 1),
+            "ticket": 210.0,
+            "food": round(random.uniform(30, 200), 2),
+            "shopping": round(random.uniform(0, 500), 2),
+            "transport": round(random.uniform(0, 80), 2),
+            "entertainment": round(random.uniform(0, 150), 2),
+            "total": round(210 + random.uniform(50, 500), 2),
+        })
     os.makedirs(os.path.dirname(CACHE_PATH), exist_ok=True)
     with open(CACHE_PATH, "w", encoding="utf-8") as f:
         json.dump({"rows": rows, "total": len(rows)}, f, ensure_ascii=False)

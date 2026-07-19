@@ -182,15 +182,7 @@ export default function Admin() {
 
         {activeTab === "users" && <UsersTab />}
 
-        {activeTab === "dhconfig" && (
-          <View className="card">
-            <Text className="card-title">数字人形象配置</Text>
-            <View className="config-row">
-              <Text>外观风格：禅意小沙弥（CSS版）</Text>
-            </View>
-            <Text className="empty-tip">配置保存功能开发中</Text>
-          </View>
-        )}
+        {activeTab === "dhconfig" && <DhConfigTab />}
 
         {activeTab === "emotion" && (
           <View className="card">
@@ -445,6 +437,31 @@ function UsersTab({ }: any) {
           )}
         </View>
       )}
+    </View>
+  );
+}
+
+/* ========== 形象配置组件 ========== */
+function DhConfigTab() {
+  const [config, setConfig] = useState<any>(null);
+  const [loaded, setLoaded] = useState(false);
+  useEffect(function() {
+    if (loaded) return;
+    Taro.request({ url: API_URL + "/api/admin/digital-human/config" })
+      .then(function(r: any) { if (r.statusCode === 200) { setConfig(r.data); setLoaded(true); } })
+      .catch(function() {});
+  }, []);
+  return (
+    <View className="card">
+      <Text className="card-title">慧行 · 数字人形象配置</Text>
+      <View className="config-row"><Text>TTS 语音引擎：边缘 TTS 云端 (Edge-TTS)</Text></View>
+      <View className="config-row"><Text>默认配音：zh-CN-XiaoxiaoNeural（微软少女音）</Text></View>
+      <View className="config-row"><Text>语速倍率：1.0×（正常语速）</Text></View>
+      <View className="config-row"><Text>ASR 语音识别：FunASR Paraformer-zh（阿里达摩院）</Text></View>
+      <View className="config-row"><Text>视频编码：H.264 baseline MP4</Text></View>
+      <View className="config-row"><Text>形象尺寸：360×570px</Text></View>
+      <View className="config-row"><Text>大语言模型：DeepSeek Chat</Text></View>
+      <View className="config-row"><Text>外观风格：禅意小沙弥（CSS + 视频双模式）</Text></View>
     </View>
   );
 }

@@ -125,6 +125,7 @@ export default function Index() {
 
   function endTour() {
     stopAudio(); _tourPlaying = false;
+    setTourMode("idle"); setTourItems([]); setTourIndex(0);
     setMessages(function(prev) { return prev.concat([{ role: "assistant", text: "伴随讲解已结束，欢迎随时提问 🙏" }]); });
     doScroll();
   }
@@ -333,6 +334,7 @@ export default function Index() {
         const latency = ((Date.now() - t0) / 1000).toFixed(1);
         setMessages((prev) => [...prev, { role: "assistant", text: reply, emotion, latency: parseFloat(latency) }]);
         doScroll();
+        if (data.tts_url) playTTSFromUrl(data.tts_url);
       }
     } catch {
       setMessages((prev) => [...prev, { role: "assistant", text: "慧行暂时无法回答，请确认后端服务已启动。" }]);
@@ -374,6 +376,7 @@ ${data.path}`;
           const latency = parseFloat(((Date.now() - t0) / 1000).toFixed(1));
           setMessages((prev) => [...prev, { role: "assistant", text: routeText, latency }]);
           doScroll();
+          if (data.tts_url) playTTSFromUrl(data.tts_url);
           // 自动启动伴随式讲解
           var _pref = pref;
           setTimeout(function() { startTour(_pref); }, 800);
