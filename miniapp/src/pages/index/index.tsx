@@ -94,13 +94,15 @@ export default function Index() {
 
   function resumeTour() {
     if (tourMode !== "paused") return;
-    setTourMode("playing");
+    _tourEnded = false; setTourMode("playing");
     var item = tourItems[tourIndex];
     if (item && item.tts_url) {
       var a = Taro.createInnerAudioContext(); audioRef.current = a;
       a.src = API_URL + item.tts_url;
       a.onEnded(function() {
         a.destroy(); audioRef.current = null; setSpeaking(false);
+        if (_tourEnded) return;
+        setTimeout(function() { playTourSpot(tourIndex + 1, tourItems); }, 400);
       });
       a.onError(function() { a.destroy(); audioRef.current = null; setSpeaking(false); });
       a.play(); setSpeaking(true);
@@ -108,11 +110,14 @@ export default function Index() {
   }
 
   function skipTour() {
-    stopAudio(); _tourPlaying = true;
+    stopAudio(); _tourEnded = true;
     var nextIdx = tourIndex + 1;
     var items = tourItems;
     if (nextIdx >= items.length) {
+      setDhStatus("speaking"); setTourMode("idle");
+      setTimeout(function() { setDhStatus("idle"); }, 3000); return;
     }
+    _tourEnded = false;
     setTourIndex(nextIdx); setTourMode("playing");
     var item = items[nextIdx];
     if (item && item.tts_url) {
@@ -120,6 +125,8 @@ export default function Index() {
       a.src = API_URL + item.tts_url;
       a.onEnded(function() {
         a.destroy(); audioRef.current = null; setSpeaking(false);
+        if (_tourEnded) return;
+        setTimeout(function() { playTourSpot(tourIndex + 1, tourItems); }, 400);
       });
       a.onError(function() { a.destroy(); audioRef.current = null; setSpeaking(false); });
       a.play(); setSpeaking(true);
