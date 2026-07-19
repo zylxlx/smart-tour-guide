@@ -387,10 +387,9 @@ ${data.path}`;
           const latency = parseFloat(((Date.now() - t0) / 1000).toFixed(1));
           setMessages((prev) => [...prev, { role: "assistant", text: routeText, latency }]);
           doScroll();
-          if (data.tts_url) playTTSFromUrl(data.tts_url);
-          // 自动启动伴随式讲解
+          // 直接启动伴随式讲解，不播放路线摘要TTS
           var _pref = pref;
-          setTimeout(function() { startTour(_pref); }, 800);
+          setTimeout(function() { startTour(_pref); }, 600);
         } catch {
           setMessages((prev) => [...prev, { role: "assistant", text: `推荐结果：${JSON.stringify(res.data)}` }]);
           doScroll();
